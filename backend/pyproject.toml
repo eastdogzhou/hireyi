@@ -2,7 +2,7 @@
 name = "hireyi"
 version = "0.1.0"
 description = "AI-powered resume management and talent screening platform"
-authors = [{ name = "Resume Matcher Team" }]
+authors = [{ name = "HireyI Team" }]
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
