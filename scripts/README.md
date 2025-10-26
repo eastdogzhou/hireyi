@@ -87,10 +87,10 @@
 
 ```bash
 # 查看后端日志
-tail -f /tmp/resume-matcher-backend.log
+tail -f /tmp/hireyi-backend.log
 
 # 查看前端日志
-tail -f /tmp/resume-matcher-frontend.log
+tail -f /tmp/hireyi-frontend.log
 ```
 
 #### 停止服务

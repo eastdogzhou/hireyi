@@ -40,8 +40,8 @@ NO_BROWSER=false
 VERBOSE=false
 
 # PID 文件
-BACKEND_PID_FILE="/tmp/resume-matcher-backend.pid"
-FRONTEND_PID_FILE="/tmp/resume-matcher-frontend.pid"
+BACKEND_PID_FILE="/tmp/hireyi-backend.pid"
+FRONTEND_PID_FILE="/tmp/hireyi-frontend.pid"
 
 # ============================================================================
 # 辅助函数
@@ -297,7 +297,7 @@ main() {
         if [ "$VERBOSE" = true ]; then
             uv run uvicorn app.main:app --reload --port $BACKEND_PORT &
         else
-            uv run uvicorn app.main:app --reload --port $BACKEND_PORT > /tmp/resume-matcher-backend.log 2>&1 &
+            uv run uvicorn app.main:app --reload --port $BACKEND_PORT > /tmp/hireyi-backend.log 2>&1 &
         fi
 
         BACKEND_PID=$!
@@ -315,7 +315,7 @@ main() {
         else
             print_error "后端服务启动失败"
             if [ "$VERBOSE" = false ]; then
-                print_info "查看日志: tail -f /tmp/resume-matcher-backend.log"
+                print_info "查看日志: tail -f /tmp/hireyi-backend.log"
             fi
             exit 1
         fi
@@ -332,7 +332,7 @@ main() {
         if [ "$VERBOSE" = true ]; then
             npm run dev -- --port $FRONTEND_PORT &
         else
-            npm run dev -- --port $FRONTEND_PORT > /tmp/resume-matcher-frontend.log 2>&1 &
+            npm run dev -- --port $FRONTEND_PORT > /tmp/hireyi-frontend.log 2>&1 &
         fi
 
         FRONTEND_PID=$!
@@ -349,7 +349,7 @@ main() {
         else
             print_error "前端服务启动失败"
             if [ "$VERBOSE" = false ]; then
-                print_info "查看日志: tail -f /tmp/resume-matcher-frontend.log"
+                print_info "查看日志: tail -f /tmp/hireyi-frontend.log"
             fi
             exit 1
         fi
@@ -409,10 +409,10 @@ main() {
     if [ "$VERBOSE" = false ]; then
         echo -e "${BOLD}查看日志:${NC}"
         if [ "$FRONTEND_ONLY" = false ]; then
-            echo -e "  • 后端: ${YELLOW}tail -f /tmp/resume-matcher-backend.log${NC}"
+            echo -e "  • 后端: ${YELLOW}tail -f /tmp/hireyi-backend.log${NC}"
         fi
         if [ "$BACKEND_ONLY" = false ]; then
-            echo -e "  • 前端: ${YELLOW}tail -f /tmp/resume-matcher-frontend.log${NC}"
+            echo -e "  • 前端: ${YELLOW}tail -f /tmp/hireyi-frontend.log${NC}"
         fi
         echo ""
     fi
