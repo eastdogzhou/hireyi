@@ -1,0 +1,23 @@
+{
+  "name": "resume-matcher-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Resume Scanning System",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.4"
+  },
+  "lint-staged": {
+    "frontend/src/**/*.{ts,tsx,js,jsx}": [
+      "cd frontend && npm run lint:fix",
+      "cd frontend && npm run format"
+    ],
+    "backend/**/*.py": [
+      "cd backend && uv run ruff check --fix",
+      "cd backend && uv run ruff format"
+    ]
+  }
+}
