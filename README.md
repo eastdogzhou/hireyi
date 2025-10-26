@@ -27,7 +27,7 @@ AI-powered resume management and talent screening platform that helps recruiting
 ## Project Structure
 
 ```
-resume-matcher/
+hireyi/
 ├── backend/              # FastAPI backend application
 │   ├── app/
 │   │   ├── api/         # API endpoints (26 endpoints)

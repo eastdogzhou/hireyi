@@ -1,5 +1,5 @@
 [project]
-name = "resume-matcher"
+name = "hireyi"
 version = "0.1.0"
 description = "AI-powered resume management and talent screening platform"
 authors = [{ name = "Resume Matcher Team" }]

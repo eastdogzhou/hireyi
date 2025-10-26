@@ -98,7 +98,7 @@
 
   Step 3: 更新后端 CORS
 
-  将 Vercel 给你的域名（如 https://resume-matcher.vercel.app）添加到后端 CORS 配置。
+  将 Vercel 给你的域名（如 https://hireyi.vercel.app）添加到后端 CORS 配置。
 
   ---
   ⚠️ 注意事项

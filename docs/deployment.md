@@ -67,7 +67,7 @@
 
 ```bash
 # 1. 确保已配置环境变量（首次使用需要配置）
-cd /path/to/resume-matcher
+cd /path/to/hireyi
 
 # 2. 运行一键启动脚本
 ./scripts/start.sh

@@ -536,7 +536,7 @@ chore(deps): upgrade supabase to v2.5.0
 Based on `docs/ai_resume_prd.md` Section 8.1:
 
 ```
-resume-matcher/
+hireyi/
 ├── backend/
 │   ├── app/
 │   │   ├── api/              # FastAPI route handlers
