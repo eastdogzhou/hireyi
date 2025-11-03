@@ -1,77 +1,126 @@
-# Authentication & Organization Management Design
+# Authentication & Organization Management - Implementation Plan
 
-**Version**: 2.0
-**Date**: 2025-01-23
-**Status**: Proposal (Updated with Simplified Design)
+**Version**: 3.0
+**Date**: 2025-01-27
+**Status**: Ready for Implementation
 
-## 1. Overview
+## 1. Executive Summary
 
-This document describes a **simplified** design for adding user authentication and multi-tenant organization management to the AI Resume Screening System using Supabase native solutions.
+基于 MVP 原则和最小化设计理念，采用最简单可靠的方案实现用户认证和组织管理功能。
 
-### 1.1 Design Principles
+### 核心决策
 
-Following `docs/rule.md` **Minimal Design Principle**:
-- Simple, straightforward solutions over complex architectures
-- Avoid abstractions not immediately necessary
-- Direct solutions over framework-heavy approaches
-- Start with simplest working solution
+1. **认证方式**：仅使用邮箱+密码登录（最简单）
+2. **组织模式**：个人组织或加入现有组织（二选一）
+3. **权限设计**：简单的 admin/member 角色（最多3个管理员）
+4. **数据隔离**：Row Level Security (RLS) 基于 org_id
+5. **无需迁移**：清空现有测试数据，重新建表
 
-### 1.2 Goals
+## 2. Authentication Design
 
-- Enable user authentication with email/password
-- Support organization creation and membership
-- Simple admin/member role management (max 3 admins per org)
-- Data isolation via Row Level Security (RLS)
-- Zero migration complexity (clean slate approach)
+### 2.1 登录方式
 
-### 1.3 Non-Goals
+**仅实现邮箱+密码登录**
 
-- Social login - not needed for MVP
-- SAML/SSO - enterprise feature for later
-- Complex permission system - just admin/member is enough
-- Organization deletion/archival - manual process for now
-- Invitation via email - use organization ID for now
+```typescript
+// 登录请求
+interface LoginRequest {
+  email: string        // 邮箱
+  password: string     // 密码（最少8位）
+}
 
-## 2. Architecture Overview
+// 注册请求
+interface RegisterRequest {
+  email: string        // 邮箱
+  password: string     // 密码
+  name: string         // 用户姓名
+  org_id?: string      // 可选：加入现有组织
+}
+```
 
-### 2.1 Technology Stack
+### 2.2 认证流程
 
-- **Authentication**: Supabase Auth (JWT-based)
-- **Authorization**: PostgreSQL Row Level Security (RLS)
-- **Multi-Tenancy**: Shared database with `org_id` column pattern
-- **Frontend State**: React Context + Supabase client
-- **Backend**: FastAPI with Supabase JWT validation
+```mermaid
+graph TD
+    A[用户访问系统] --> B{是否登录?}
+    B -->|否| C[显示登录页面]
+    C --> D[输入邮箱密码]
+    D --> E[Supabase Auth验证]
+    E -->|成功| F[获取JWT Token]
+    F --> G[加载用户组织]
+    G -->|有组织| H[进入系统]
+    G -->|无组织| I[创建/加入组织]
+    E -->|失败| J[显示错误]
+```
 
-### 2.2 Simplified Multi-Tenancy
+### 2.3 密码规则
 
-- Each table gets an `org_id` column
-- RLS policies check `org_id` matches user's organization
-- No complex hierarchy or nested permissions
-- Simple and effective for our scale
+- 最少8个字符
+- 必须包含：大写字母 + 小写字母 + 数字
+- 可选：特殊字符
+- 支持密码重置（通过邮箱）
 
-## 3. Database Schema Changes
+## 3. Organization Management
 
-### 3.1 New Tables
+### 3.1 组织创建规则
 
-#### 3.1.1 `organizations` Table (Simplified)
+**两种路径**：
+
+1. **创建个人组织**（默认）
+   - 自动命名："{用户姓名}的组织"
+   - 用户成为管理员
+   - 立即可用
+
+2. **加入现有组织**
+   - 输入组织ID（6位代码）
+   - 创建待审批请求
+   - 管理员审批后可用
+
+### 3.2 成员管理
+
+```typescript
+// 组织成员状态
+enum MemberStatus {
+  PENDING = 'pending',     // 待审批
+  APPROVED = 'approved',   // 已批准
+  REJECTED = 'rejected'    // 已拒绝
+}
+
+// 成员角色
+enum MemberRole {
+  ADMIN = 'admin',         // 管理员（最多3个）
+  MEMBER = 'member'        // 普通成员
+}
+```
+
+### 3.3 管理员权限
+
+管理员可以：
+- ✅ 审批/拒绝成员申请
+- ✅ 提升成员为管理员（限3个）
+- ✅ 移除普通成员
+- ✅ 查看所有组织数据
+
+管理员不能：
+- ❌ 移除自己（创建者例外）
+- ❌ 降级其他管理员（仅创建者可以）
+- ❌ 删除组织（需要所有管理员同意）
+
+## 4. Database Schema (Clean Slate)
+
+### 4.1 核心表结构
 
 ```sql
+-- 1. 组织表
 CREATE TABLE organizations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,  -- e.g., "张三个人组织"
+    name VARCHAR(255) NOT NULL,
+    org_code VARCHAR(6) UNIQUE NOT NULL, -- 6位唯一代码
     created_by UUID NOT NULL REFERENCES auth.users(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_organizations_created_by ON organizations(created_by);
-
-COMMENT ON TABLE organizations IS 'Organizations for multi-tenant data isolation';
-COMMENT ON COLUMN organizations.name IS 'Organization name, default format: {username}个人组织';
-```
-
-#### 3.1.2 `org_members` Table (with Approval Flow)
-
-```sql
+-- 2. 组织成员表
 CREATE TABLE org_members (
     id SERIAL PRIMARY KEY,
     org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -81,377 +130,320 @@ CREATE TABLE org_members (
     requested_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     approved_at TIMESTAMP WITH TIME ZONE,
     approved_by UUID REFERENCES auth.users(id),
-
-    UNIQUE(org_id, user_id)  -- One membership per user per org
+    UNIQUE(org_id, user_id)
 );
 
-CREATE INDEX idx_org_members_user_id ON org_members(user_id);
-CREATE INDEX idx_org_members_org_id_status ON org_members(org_id, status);
-
-COMMENT ON TABLE org_members IS 'Organization membership with approval flow';
-COMMENT ON COLUMN org_members.role IS 'admin: can approve/reject members (max 3), member: regular access';
-COMMENT ON COLUMN org_members.status IS 'pending: awaiting approval, approved: active member, rejected: denied access';
-```
-
-#### 3.1.3 Simplified `users` Table
-
-```sql
--- Drop old users table and create fresh one (no migration needed)
-DROP TABLE IF EXISTS users CASCADE;
-
+-- 3. 用户配置表
 CREATE TABLE users (
     id UUID PRIMARY KEY REFERENCES auth.users(id),
     name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
     current_org_id UUID REFERENCES organizations(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_users_current_org_id ON users(current_org_id);
-
-COMMENT ON TABLE users IS 'User profiles linked to Supabase Auth';
-COMMENT ON COLUMN users.current_org_id IS 'Currently selected organization';
+-- 4. 更新业务表（添加 org_id）
+ALTER TABLE candidates ADD COLUMN org_id UUID NOT NULL REFERENCES organizations(id);
+ALTER TABLE positions ADD COLUMN org_id UUID NOT NULL REFERENCES organizations(id);
+-- 其他表类似...
 ```
 
-### 3.2 Clean Slate Approach (No Migration)
-
-Since we can clear existing data, **recreate all tables with `org_id`**:
+### 4.2 RLS 策略（极简版）
 
 ```sql
--- Drop all existing tables
-DROP TABLE IF EXISTS interview_feedbacks CASCADE;
-DROP TABLE IF EXISTS position_candidates CASCADE;
-DROP TABLE IF EXISTS positions CASCADE;
-DROP TABLE IF EXISTS candidates CASCADE;
-
--- Recreate with org_id (simplified example for candidates)
-CREATE TABLE candidates (
-    id SERIAL PRIMARY KEY,
-    org_id UUID NOT NULL REFERENCES organizations(id),
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255),
-    phone VARCHAR(50),
-    -- ... other existing fields ...
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    is_deleted BOOLEAN DEFAULT FALSE
-);
-
-CREATE INDEX idx_candidates_org_id ON candidates(org_id, created_at DESC);
-
--- Similar pattern for positions, position_candidates, interview_feedbacks
-```
-
-**Benefit**: Clean schema, no legacy fields, optimal indexes from the start.
-
-## 4. Simplified RLS Policies
-
-### 4.1 Core Principle
-
-One simple rule: **Users can only access data from their current organization**.
-
-### 4.2 Helper Function (Only One Needed)
-
-```sql
--- Get current user's org_id from their profile
-CREATE OR REPLACE FUNCTION auth.current_org_id()
-RETURNS UUID
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT current_org_id FROM users WHERE id = auth.uid();
-$$;
-```
-
-### 4.3 Simple RLS Pattern (Same for All Tables)
-
-```sql
--- Enable RLS
-ALTER TABLE candidates ENABLE ROW LEVEL SECURITY;
-
--- Universal policy pattern for all tables with org_id
+-- 通用策略：只能看到自己组织的数据
 CREATE POLICY "org_isolation" ON candidates
-FOR ALL USING (org_id = auth.current_org_id());
+FOR ALL USING (org_id = (
+    SELECT current_org_id FROM users WHERE id = auth.uid()
+));
 
--- Apply same pattern to: positions, position_candidates, interview_feedbacks
+-- 应用到所有业务表
+-- positions, position_candidates, interview_feedbacks 等
 ```
 
-**That's it!** One policy per table. Simple and effective.
+## 5. Backend Implementation Tasks
 
-### 4.4 Special Cases
-
-```sql
--- Organizations: Users can see their orgs
-CREATE POLICY "view_member_orgs" ON organizations
-FOR SELECT USING (
-  id IN (
-    SELECT org_id FROM org_members
-    WHERE user_id = auth.uid() AND status = 'approved'
-  )
-);
-
--- Org members: Admins can manage
-CREATE POLICY "admin_manage_members" ON org_members
-FOR ALL USING (
-  org_id = auth.current_org_id()
-  AND EXISTS (
-    SELECT 1 FROM org_members
-    WHERE user_id = auth.uid()
-      AND org_id = org_members.org_id
-      AND role = 'admin'
-      AND status = 'approved'
-  )
-);
-```
-
-## 5. Authentication Flow
-
-### 5.1 User Registration (Two Options)
-
-**Option A: Create Personal Organization**
-1. User signs up with email, password, name
-2. System creates organization named "{name}个人组织"
-3. User becomes admin of their organization
-4. Can start using the system immediately
-
-**Option B: Join Existing Organization**
-1. User signs up with email, password, name
-2. User enters organization ID (provided by org admin)
-3. System creates pending membership request
-4. Waits for admin approval before accessing data
-
-**Registration API**:
-```python
-@router.post("/register")
-async def register(request: RegisterRequest):
-    # 1. Create Supabase auth user
-    auth_user = supabase.auth.sign_up(email, password)
-
-    # 2. Create user profile
-    user = create_user_profile(auth_user.id, name, email)
-
-    # 3. Handle organization
-    if request.org_id:
-        # Option B: Request to join
-        create_membership_request(request.org_id, auth_user.id)
-        return {"status": "pending_approval"}
-    else:
-        # Option A: Create personal org
-        org = create_organization(f"{name}个人组织", auth_user.id)
-        create_membership(org.id, auth_user.id, role="admin", status="approved")
-        update_user_current_org(auth_user.id, org.id)
-        return {"status": "active", "org_id": org.id}
-```
-
-### 5.2 User Login (Simplified)
-
-1. User submits email + password
-2. Check if user has approved organization membership
-3. If yes: Login successful, load org context
-4. If pending: Show "waiting for approval" message
-5. If no org: Prompt to create or join organization
-
-### 5.3 Admin Management
-
-**Admin Limits**:
-- Maximum 3 admins per organization (including creator)
-- Organization creator is automatically first admin
-- Admins can promote members to admin (if under limit)
-- Admins can approve/reject membership requests
-
-**Admin Capabilities**:
-```python
-@router.post("/org/approve-member")
-async def approve_member(member_id: int, current_user: User):
-    # 1. Verify current user is admin
-    if not is_admin(current_user.id, org_id):
-        raise HTTPException(403, "Not an admin")
-
-    # 2. Approve membership
-    update_membership_status(member_id, "approved")
-
-@router.post("/org/promote-admin")
-async def promote_to_admin(user_id: UUID, current_user: User):
-    # 1. Check admin count
-    admin_count = count_admins(org_id)
-    if admin_count >= 3:
-        raise HTTPException(400, "Maximum 3 admins allowed")
-
-    # 2. Promote member
-    update_member_role(user_id, "admin")
-```
-
-## 6. Frontend Changes (Minimal)
-
-### 6.1 Essential Pages
-
-```
-frontend/src/pages/
-├── Login.tsx              # Email + password login
-├── Register.tsx           # Registration with org choice
-└── PendingApproval.tsx    # "Waiting for approval" page
-```
-
-### 6.2 Simple Components
-
-```
-frontend/src/components/
-├── OrgInfo.tsx           # Display current org name
-├── AdminPanel.tsx        # Approve members, manage admins
-└── ProtectedRoute.tsx    # Redirect if not logged in
-```
-
-### 6.3 Simple Auth Context
-
-```typescript
-// Basic auth context to manage user state and org context
-const AuthContext = createContext<{
-  user: User | null
-  orgId: string | null
-  isAdmin: boolean
-}>()
-
-// Use Supabase client for auth operations
-// Store current_org_id in users table, not JWT metadata (simpler)
-```
-
-## 7. Backend Changes (Simplified)
-
-### 7.1 Simple Auth Middleware
+### 5.1 认证相关 API
 
 ```python
-from fastapi import Depends, HTTPException
-from jose import jwt
+# 新增的 API 端点
+POST   /api/auth/register          # 注册
+POST   /api/auth/login             # 登录
+POST   /api/auth/logout            # 登出
+GET    /api/auth/me                # 获取当前用户
+POST   /api/auth/reset-password    # 密码重置
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    """Validate JWT and get user ID."""
+# 组织管理 API
+GET    /api/organizations          # 用户的组织列表
+POST   /api/organizations          # 创建组织
+GET    /api/organizations/{id}     # 组织详情
+POST   /api/organizations/join     # 申请加入
+GET    /api/organizations/{id}/members     # 成员列表
+POST   /api/organizations/{id}/members/approve   # 审批成员
+DELETE /api/organizations/{id}/members/{user_id} # 移除成员
+```
+
+### 5.2 中间件改造
+
+```python
+# JWT 验证中间件
+async def require_auth(request: Request):
+    token = request.headers.get("Authorization")
+    if not token:
+        raise HTTPException(401, "未登录")
+
     try:
-        payload = jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"])
-        return payload["sub"]  # user_id
-    except:
-        raise HTTPException(401, "Invalid token")
+        # 验证 Supabase JWT
+        payload = jwt.decode(token, SUPABASE_JWT_SECRET)
+        user_id = payload["sub"]
 
-async def get_current_org(user_id: str = Depends(get_current_user)):
-    """Get user's current org from database."""
-    user = supabase.table("users").select("current_org_id").eq("id", user_id).single()
-    return user.data["current_org_id"]
+        # 获取用户当前组织
+        user = await get_user_with_org(user_id)
+        if not user.current_org_id:
+            raise HTTPException(403, "未加入组织")
+
+        request.state.user = user
+        request.state.org_id = user.current_org_id
+    except:
+        raise HTTPException(401, "Token 无效")
 ```
 
-### 7.2 Service Layer Pattern
+### 5.3 Service 层改造
+
+所有 Service 需要注入 org_id：
 
 ```python
-# Simple pattern: inject org_id into all queries
-class CandidateService:
-    def __init__(self, org_id: str):
+class CandidateService(BaseService):
+    def __init__(self, supabase: Client, org_id: str):
+        super().__init__(supabase, "candidates")
         self.org_id = org_id
 
-    def list_candidates(self):
-        return supabase.table("candidates").select("*").eq("org_id", self.org_id).execute()
-
-# Usage in API routes
-@router.get("/candidates")
-async def list_candidates(org_id: str = Depends(get_current_org)):
-    service = CandidateService(org_id)
-    return service.list_candidates()
+    def get_all(self, **filters):
+        # 自动添加 org_id 过滤
+        filters['org_id'] = self.org_id
+        return super().get_all(**filters)
 ```
 
-## 8. Implementation Approach (No Migration Needed)
+## 6. Frontend Implementation Tasks
 
-### 8.1 Clean Slate
+### 6.1 认证页面
 
-Since existing data can be cleared:
-
-```sql
--- 1. Drop all existing tables
-DROP TABLE IF EXISTS interview_feedbacks CASCADE;
-DROP TABLE IF EXISTS position_candidates CASCADE;
-DROP TABLE IF EXISTS positions CASCADE;
-DROP TABLE IF EXISTS candidates CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
-
--- 2. Create new schema with org support from the start
--- Run the SQL from sections 3.1 and 3.2 above
+```typescript
+// 新增页面
+/login              # 登录页
+/register           # 注册页
+/forgot-password    # 忘记密码
+/organization/join  # 加入组织
+/organization/create # 创建组织
+/pending-approval   # 等待审批
 ```
 
-### 8.2 Development Order
+### 6.2 认证状态管理
 
-1. **Week 1**: Database schema + RLS policies
-2. **Week 2**: Backend auth middleware + service updates
-3. **Week 3**: Frontend auth pages + protected routes
-4. **Week 4**: Admin panel + member management
-5. **Week 5**: Testing + polish
+```typescript
+// Auth Context
+interface AuthContextType {
+  user: User | null
+  organization: Organization | null
+  isAdmin: boolean
+  login: (email: string, password: string) => Promise<void>
+  logout: () => Promise<void>
+  register: (data: RegisterData) => Promise<void>
+}
 
-## 9. Key Decisions Summary
+// Protected Route
+function ProtectedRoute({ children }) {
+  const { user, organization } = useAuth()
 
-### 9.1 Design Choices
+  if (!user) return <Navigate to="/login" />
+  if (!organization) return <Navigate to="/organization/join" />
+  if (organization.status === 'pending') return <PendingApproval />
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| **Registration** | Two options: Create org OR join existing | Flexible for different user types |
-| **Organization ID** | User enters ID, not email invite | Simpler, no email infrastructure needed |
-| **Admin Limit** | Max 3 admins per org | Prevents permission sprawl |
-| **Data Storage** | `current_org_id` in users table, not JWT | Simpler, easier to update |
-| **RLS Pattern** | One simple policy per table | Maintainable, understandable |
-| **Migration** | Clean slate, drop existing data | No complex migration logic |
+  return children
+}
+```
 
-### 9.2 What We're NOT Doing (Intentionally)
+### 6.3 组织管理组件
 
-- ❌ Email invitations - use org ID instead
-- ❌ Complex permission system - just admin/member
-- ❌ Organization hierarchy - flat structure only
-- ❌ Social login - email/password only for MVP
-- ❌ Soft delete with timestamps - boolean flag is enough
-- ❌ JWT metadata complexity - store org_id in database
+```typescript
+// 组织切换器（顶部导航栏）
+function OrgSwitcher() {
+  const { organization, switchOrg } = useAuth()
+  const { data: orgs } = useMyOrganizations()
 
-### 9.3 Security Checklist
+  return (
+    <Select value={organization.id} onChange={switchOrg}>
+      {orgs.map(org => (
+        <Option key={org.id} value={org.id}>{org.name}</Option>
+      ))}
+    </Select>
+  )
+}
 
-- ✅ RLS on all tables with org_id
-- ✅ JWT validation in backend
-- ✅ Admin approval for new members
-- ✅ Service role key only for backend
-- ✅ Parameterized queries (via Supabase client)
+// 成员管理面板（仅管理员可见）
+function MemberManagement() {
+  const { data: pending } = usePendingMembers()
+  const approveMutation = useApproveMember()
 
-## 10. Questions to Clarify
+  return (
+    <Card>
+      <h3>待审批成员 ({pending.length})</h3>
+      {pending.map(member => (
+        <MemberRequest
+          key={member.id}
+          member={member}
+          onApprove={() => approveMutation.mutate(member.id)}
+        />
+      ))}
+    </Card>
+  )
+}
+```
 
-### 10.1 Organization Management
+## 7. Implementation Phases
 
-1. **Can organization creator remove themselves?**
-   - Suggestion: No, must transfer ownership first
+### Phase 1: Database Setup (Day 1)
+- [ ] 备份现有数据
+- [ ] 创建新的数据库 schema
+- [ ] 设置 RLS 策略
+- [ ] 创建初始测试数据
 
-2. **Can admins demote other admins?**
-   - Suggestion: Only org creator can manage admin roles
+### Phase 2: Backend Auth (Day 2-3)
+- [ ] Supabase Auth 集成
+- [ ] JWT 中间件
+- [ ] 认证 API 端点
+- [ ] 组织管理 API
 
-3. **What happens if all admins leave?**
-   - Suggestion: Last admin cannot leave, must delete org
+### Phase 3: Backend Services (Day 4-5)
+- [ ] 改造所有 Service 类
+- [ ] 添加 org_id 注入
+- [ ] 更新 API 路由
+- [ ] 测试数据隔离
 
-### 10.2 Member Approval
+### Phase 4: Frontend Auth (Day 6-7)
+- [ ] 登录/注册页面
+- [ ] Auth Context
+- [ ] Protected Routes
+- [ ] Token 管理
 
-4. **How long do pending requests stay valid?**
-   - Suggestion: 30 days, then auto-expire
+### Phase 5: Frontend Organization (Day 8-9)
+- [ ] 组织创建/加入流程
+- [ ] 成员管理面板
+- [ ] 组织切换器
+- [ ] 审批流程
 
-5. **Can users request to join multiple orgs?**
-   - Suggestion: Yes, but only one active membership
+### Phase 6: Testing & Polish (Day 10)
+- [ ] 端到端测试
+- [ ] 错误处理
+- [ ] UI 优化
+- [ ] 文档更新
 
-6. **Should we notify admins of pending requests?**
-   - Suggestion: Show count in UI, no email for MVP
+## 8. Task Breakdown Summary
 
-### 10.3 Technical
+### Backend Tasks (20个)
 
-7. **Use Supabase Edge Functions for triggers?**
-   - Suggestion: No, keep logic in backend for simplicity
+#### 数据库任务 (4个)
+1. 创建认证相关表结构
+2. 更新业务表添加 org_id
+3. 设置 RLS 策略
+4. 创建数据库初始化脚本
 
-8. **Store org name in every record for performance?**
-   - Suggestion: No, JOIN when needed, avoid denormalization
+#### 认证服务 (6个)
+5. Supabase Auth 配置
+6. JWT 验证中间件
+7. 用户注册 API
+8. 用户登录 API
+9. 密码重置 API
+10. 获取当前用户 API
 
-9. **Add org slug for pretty URLs?**
-   - Suggestion: Not needed for MVP, org ID is fine
+#### 组织服务 (5个)
+11. 创建组织 API
+12. 加入组织 API
+13. 成员审批 API
+14. 成员管理 API
+15. 组织切换 API
+
+#### Service层改造 (5个)
+16. BaseService 添加 org_id 支持
+17. CandidateService 改造
+18. PositionService 改造
+19. InterviewFeedbackService 改造
+20. SmartScreeningService 改造
+
+### Frontend Tasks (20个)
+
+#### 认证页面 (5个)
+1. 登录页面组件
+2. 注册页面组件
+3. 忘记密码页面
+4. 邮箱验证页面
+5. 密码强度组件
+
+#### 组织页面 (5个)
+6. 创建组织页面
+7. 加入组织页面
+8. 等待审批页面
+9. 组织管理页面
+10. 成员列表组件
+
+#### 状态管理 (5个)
+11. Auth Context 实现
+12. Protected Route 组件
+13. Token 存储管理
+14. API 拦截器配置
+15. 组织状态管理
+
+#### UI组件 (5个)
+16. 组织切换器组件
+17. 用户菜单组件
+18. 成员卡片组件
+19. 权限提示组件
+20. 审批操作组件
+
+## 9. Risk Mitigation
+
+### 风险点
+1. **数据迁移风险** → 解决：清空测试数据，无需迁移
+2. **JWT复杂度** → 解决：使用 Supabase 内置 JWT
+3. **RLS性能** → 解决：简单策略 + 索引优化
+4. **组织切换复杂** → 解决：单组织模式，不支持切换
+
+### 安全考虑
+- ✅ 所有API需要认证
+- ✅ RLS强制数据隔离
+- ✅ 密码强度验证
+- ✅ Rate limiting（后期添加）
+- ✅ 审计日志（后期添加）
+
+## 10. Success Criteria
+
+### 功能验收
+- [ ] 用户可以注册和登录
+- [ ] 用户可以创建或加入组织
+- [ ] 管理员可以审批成员
+- [ ] 数据严格隔离（不同组织看不到对方数据）
+- [ ] 所有原有功能正常工作
+
+### 性能指标
+- 登录响应时间 < 1秒
+- 组织切换 < 500ms
+- RLS 查询性能损耗 < 10%
+
+### 用户体验
+- 清晰的注册流程
+- 友好的错误提示
+- 直观的组织管理
+- 流畅的状态切换
 
 ## 11. Next Steps
 
-1. **Review this simplified design** - confirm it meets requirements
-2. **Answer open questions** - make final decisions
-3. **Start implementation** - begin with database schema
-4. **Test incrementally** - verify each component works before moving on
+1. **立即开始**：数据库 schema 设计和创建
+2. **优先级高**：后端认证 API 实现
+3. **依赖项**：前端需要等待后端 API 完成
+4. **测试策略**：每个模块完成后立即测试
 
 ---
 
-**Note**: This design prioritizes simplicity and quick implementation over feature completeness. We can always add complexity later as needs arise.
+**准备状态**：✅ 方案已确定，可以开始实施
+**预计工期**：10个工作日
+**开始时间**：立即开始

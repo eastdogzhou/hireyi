@@ -86,7 +86,7 @@ async def get_users(
         logger.error(f"Error getting users: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get users: {str(e)}",
+            detail=f"Failed to get users: {e!s}",
         )
 
 
@@ -150,7 +150,7 @@ async def create_user(
         logger.error(f"Error creating user: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create user: {str(e)}",
+            detail=f"Failed to create user: {e!s}",
         )
 
 
@@ -207,7 +207,7 @@ async def update_user(
         logger.error(f"Error updating user: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update user: {str(e)}",
+            detail=f"Failed to update user: {e!s}",
         )
 
 
@@ -239,5 +239,5 @@ async def delete_user(
         logger.error(f"Error deleting user: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete user: {str(e)}",
+            detail=f"Failed to delete user: {e!s}",
         )

@@ -178,7 +178,10 @@ def sample_candidate_data():
         "recent_company": "某公司",
         "recent_position": "工程师",
         "resume_file": "https://oss.example.com/resume.pdf",
-        "resume_md5": "abc123def456",
+        "resume_md5": "d41d8cd98f00b204e9800998ecf8427e",  # Valid 32-char MD5 hash
+        "resume_text": None,
+        "work_experience": None,
+        "education_background": None,
     }
 
 

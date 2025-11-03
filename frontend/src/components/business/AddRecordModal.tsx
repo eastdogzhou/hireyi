@@ -99,7 +99,7 @@ export function AddRecordModal({ open, onClose, candidateId, positionId, onSucce
       try {
         await createInterviewFeedback.mutateAsync({
           candidate_id: candidateId,
-          position_id: positionId || undefined,
+          position_id: positionId,
           interviewer: 1, // MVP: 硬编码为 1
           rating,
           comments: comments || undefined,
@@ -126,7 +126,7 @@ export function AddRecordModal({ open, onClose, candidateId, positionId, onSucce
       try {
         await createStatusChange.mutateAsync({
           candidate_id: candidateId,
-          position_id: positionId || undefined,
+          position_id: positionId,
           interviewer: 1, // MVP: 硬编码为 1
           new_status: newStatus,
           comments: statusReason,
@@ -241,7 +241,7 @@ export function AddRecordModal({ open, onClose, candidateId, positionId, onSucce
 
       <ModalFooter className="mt-6">
         <Button
-          variant="outline"
+          variant="secondary"
           onClick={handleClose}
           disabled={isLoading}
         >

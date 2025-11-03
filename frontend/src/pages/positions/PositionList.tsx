@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePositions } from '@/hooks/api'
+import { CreatePositionModal } from '@/components/business/CreatePositionModal'
 import type { PositionListParams } from '@/types'
 import type { Position } from '@/types/models'
 import {
@@ -31,8 +32,11 @@ export default function PositionList() {
     department: '',
   })
 
+  // Create position modal state
+  const [showCreateModal, setShowCreateModal] = useState(false)
+
   // Fetch positions
-  const { data, isLoading, error } = usePositions(searchParams)
+  const { data, isLoading, error, refetch } = usePositions(searchParams)
 
   // Handle search
   const handleSearch = (value: string) => {
@@ -180,9 +184,7 @@ export default function PositionList() {
         <Button
           variant="primary"
           icon={<Plus className="w-4 h-4" />}
-          onClick={() => {
-            console.log('Create position')
-          }}
+          onClick={() => setShowCreateModal(true)}
         >
           新建职位
         </Button>
@@ -250,6 +252,16 @@ export default function PositionList() {
           )}
         </div>
       )}
+
+      {/* Create Position Modal */}
+      <CreatePositionModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={() => {
+          refetch()
+          setShowCreateModal(false)
+        }}
+      />
     </div>
   )
 }

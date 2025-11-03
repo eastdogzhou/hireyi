@@ -1,6 +1,6 @@
 """Base service class for database operations."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Generic, TypeVar
 
 from postgrest import APIResponse
@@ -12,18 +12,25 @@ T = TypeVar("T")
 class BaseService(Generic[T]):
     """Base service class with common database operations.
 
-    Provides common CRUD operations with automatic soft delete filtering
-    and updated_at timestamp management.
+    Provides common CRUD operations with automatic soft delete filtering,
+    organization-based data isolation, and updated_at timestamp management.
     """
 
-    def __init__(self, supabase: Client, table_name: str):
+    def __init__(
+        self,
+        supabase: Client,
+        table_name: str,
+        org_id: str | None = None,
+    ):
         """Initialize base service.
 
         :param supabase: Supabase client instance.
         :param table_name: Name of the database table.
+        :param org_id: Optional organization ID for data isolation.
         """
         self.supabase = supabase
         self.table_name = table_name
+        self.org_id = org_id
 
     def _get_active_query(
         self,
@@ -31,9 +38,13 @@ class BaseService(Generic[T]):
         *,
         count: str | None = None,
     ):
-        """Get query builder with soft delete filter applied.
+        """Get query builder with soft delete and org filters applied.
 
-        :return: Query builder filtered for active (non-deleted) records.
+        Automatically applies:
+        - is_deleted = false (soft delete filter)
+        - org_id = self.org_id (if org_id is set)
+
+        :return: Query builder filtered for active records in organization.
         """
         query = self.supabase.table(self.table_name)
 
@@ -42,7 +53,14 @@ class BaseService(Generic[T]):
         else:
             query = query.select(columns)
 
-        return query.eq("is_deleted", False)
+        # Apply soft delete filter
+        query = query.eq("is_deleted", False)
+
+        # Apply org_id filter if set (for multi-tenant data isolation)
+        if self.org_id is not None:
+            query = query.eq("org_id", self.org_id)
+
+        return query
 
     def _add_updated_at(self, data: dict[str, Any]) -> dict[str, Any]:
         """Add updated_at timestamp to update data.
@@ -50,7 +68,7 @@ class BaseService(Generic[T]):
         :param data: Update data dictionary.
         :return: Data with updated_at added.
         """
-        data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        data["updated_at"] = datetime.now(UTC).isoformat()
         return data
 
     def get_by_id(self, record_id: int) -> dict[str, Any] | None:
@@ -90,9 +108,15 @@ class BaseService(Generic[T]):
     def create(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create a new record.
 
+        Automatically injects org_id if set (for multi-tenant data isolation).
+
         :param data: Record data to create.
         :return: Created record data.
         """
+        # Inject org_id if service is scoped to an organization
+        if self.org_id is not None:
+            data["org_id"] = self.org_id
+
         response: APIResponse = (
             self.supabase.table(self.table_name).insert(data).execute()
         )
@@ -101,7 +125,7 @@ class BaseService(Generic[T]):
     def update(self, record_id: int, data: dict[str, Any]) -> dict[str, Any]:
         """Update a record by ID.
 
-        Automatically adds updated_at timestamp.
+        Automatically adds updated_at timestamp and respects org_id filter.
 
         :param record_id: Record ID to update.
         :param data: Update data.
@@ -110,13 +134,18 @@ class BaseService(Generic[T]):
         # Add updated_at timestamp
         update_data = self._add_updated_at(data)
 
-        response: APIResponse = (
+        query = (
             self.supabase.table(self.table_name)
             .update(update_data)
             .eq("id", record_id)
             .eq("is_deleted", False)
-            .execute()
         )
+
+        # Apply org_id filter if set (ensures user can only update their org's data)
+        if self.org_id is not None:
+            query = query.eq("org_id", self.org_id)
+
+        response: APIResponse = query.execute()
 
         if not response.data:
             raise ValueError(f"Record with id {record_id} not found or already deleted")
@@ -126,21 +155,28 @@ class BaseService(Generic[T]):
     def soft_delete(self, record_id: int) -> bool:
         """Soft delete a record by setting is_deleted = true.
 
+        Respects org_id filter to ensure data isolation.
+
         :param record_id: Record ID to delete.
         :return: True if successful.
         """
-        response: APIResponse = (
+        query = (
             self.supabase.table(self.table_name)
             .update(
                 {
                     "is_deleted": True,
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(UTC).isoformat(),
                 }
             )
             .eq("id", record_id)
             .eq("is_deleted", False)
-            .execute()
         )
+
+        # Apply org_id filter if set (ensures user can only delete their org's data)
+        if self.org_id is not None:
+            query = query.eq("org_id", self.org_id)
+
+        response: APIResponse = query.execute()
 
         if not response.data:
             raise ValueError(f"Record with id {record_id} not found or already deleted")

@@ -1,8 +1,8 @@
 # AI Resume Scanning System - Backend
 
-> 📅 最后更新: 2025-01-18
+> 📅 最后更新: 2025-10-30
 > 📊 完成度: 100%
-> 🎯 状态: 所有核心功能与高级API已完成，可用于生产环境
+> 🎯 状态: 核心功能与认证系统已完成，可用于生产环境
 
 AI-powered resume management and talent screening platform backend.
 
@@ -27,6 +27,8 @@ AI-powered resume management and talent screening platform backend.
 ## ✨ Features
 
 ### Core Features
+- 🔐 **Authentication & Authorization**: JWT-based authentication with Supabase Auth integration
+- 🏢 **Multi-tenant Architecture**: Organization-based data isolation with role-based access control (RBAC)
 - 🤖 **AI-Powered Resume Parsing**: PyMuPDF for high-quality PDF extraction + LLM for semantic analysis
 - 🎯 **Intelligent Job Matching**: LLM-based candidate scoring with relevance and fit dimensions
 - 📊 **Candidate Management**: Complete CRUD with search, filtering, and batch operations
@@ -38,7 +40,10 @@ AI-powered resume management and talent screening platform backend.
 - 🔒 **Type Safe**: Full type annotations with basedpyright checking
 
 ### API Features
-- ✅ **28 REST API Endpoints**: Complete CRUD for all resources
+- ✅ **35 REST API Endpoints**: Complete CRUD for all resources with authentication
+- ✅ **Authentication Required**: All business APIs protected with JWT authentication
+- ✅ **Organization Isolation**: Data automatically scoped to user's organization
+- ✅ **Role-Based Access**: Creator, Admin, Interviewer, and Pending roles
 - ✅ **Pagination**: All list endpoints support limit/offset pagination
 - ✅ **Search & Filter**: Name fuzzy search, skills filtering, status filtering
 - ✅ **Batch Upload**: Process multiple resumes with fault tolerance
@@ -64,14 +69,16 @@ AI-powered resume management and talent screening platform backend.
 
 ## 📊 API Overview
 
-The backend provides **28 REST API endpoints** organized into 5 modules:
+The backend provides **35 REST API endpoints** organized into 7 modules:
 
 | Module | Endpoints | Description |
 |--------|-----------|-------------|
-| **Candidates** | 7 endpoints | Candidate CRUD, search, upload, batch upload |
-| **Positions** | 9 endpoints | Position CRUD, search, status management, candidate list, smart screening, score recalculation |
-| **Interview Feedbacks** | 7 endpoints | Interview evaluations, status changes, candidate execution records |
-| **Users** | 5 endpoints | User management CRUD |
+| **Authentication** | 6 endpoints | User registration, login, token refresh, profile management |
+| **Organizations** | 5 endpoints | Organization CRUD, member management, invitations |
+| **Candidates** | 7 endpoints | Candidate CRUD, search, upload, batch upload (auth required) |
+| **Positions** | 9 endpoints | Position CRUD, search, status management, candidate list, smart screening, score recalculation (auth required) |
+| **Interview Feedbacks** | 7 endpoints | Interview evaluations, status changes, candidate execution records (auth required) |
+| **Users** | 3 endpoints | User management CRUD (basic, not auth users) |
 | **System** | 2 endpoints | Health check, API info |
 
 **API Base URL**: `http://localhost:8000`
@@ -155,6 +162,41 @@ LOG_LEVEL=INFO
 CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
 CORS_ALLOW_CREDENTIALS=true
 ```
+
+### ⚠️ Supabase Configuration for MVP (TEMPORARY)
+
+**CRITICAL**: For development convenience, the following security features are **DISABLED** in Supabase. They MUST be **RE-ENABLED** before production deployment.
+
+#### Disabled Features (Development Only)
+
+1. **Email Verification - DISABLED**
+   - Status: Email confirmation is disabled in Supabase Dashboard
+   - Impact: Users can login immediately after registration
+   - How to disable: Supabase Dashboard → Authentication → Providers → Email → Uncheck "Enable email confirmations"
+
+2. **Row Level Security (RLS) - DISABLED**
+   - Status: RLS is disabled for all database tables
+   - Impact: No database access control (all operations allowed)
+   - How to disable: Execute the following SQL in Supabase SQL Editor:
+     ```sql
+     ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
+     ALTER TABLE public.organizations DISABLE ROW LEVEL SECURITY;
+     ALTER TABLE public.org_members DISABLE ROW LEVEL SECURITY;
+     ALTER TABLE public.candidates DISABLE ROW LEVEL SECURITY;
+     ALTER TABLE public.positions DISABLE ROW LEVEL SECURITY;
+     ALTER TABLE public.position_candidates DISABLE ROW LEVEL SECURITY;
+     ALTER TABLE public.interview_feedbacks DISABLE ROW LEVEL SECURITY;
+     ```
+
+#### ⚡ Before Production Deployment - Re-enable Security
+
+**Checklist**:
+- [ ] Enable Email Verification (Supabase Dashboard → Authentication → Providers → Email)
+- [ ] Enable RLS for all tables (see [CLAUDE.md](../CLAUDE.md#️-mvp-development-configuration-temporary) for details)
+- [ ] Create RLS policies for organization-based access control
+- [ ] Test security in staging environment
+
+**Note**: The codebase already handles these security features correctly, so no code changes are needed when re-enabling.
 
 ### Database Initialization
 
@@ -265,9 +307,307 @@ Returns system health status including database connectivity.
 
 ---
 
+### Authentication API
+
+Base path: `/api/auth`
+
+**Important**: Most business APIs (candidates, positions, interview feedbacks) require authentication. Include the JWT token in the `Authorization` header:
+
+```bash
+Authorization: Bearer <your-jwt-token>
+```
+
+#### `POST /api/auth/register` - Register New User
+Register a new user account with Supabase Auth.
+
+**Request Body**:
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!",
+  "name": "John Doe"
+}
+```
+
+**Response**:
+```json
+{
+  "user": {
+    "id": "uuid-string",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "created_at": "2025-10-30T10:00:00Z"
+  },
+  "session": {
+    "access_token": "jwt-token-here",
+    "refresh_token": "refresh-token-here",
+    "expires_at": "2025-10-30T11:00:00Z"
+  }
+}
+```
+
+**Status Codes**:
+- `200`: Registration successful
+- `400`: Validation error (email already exists, weak password, etc.)
+- `500`: Server error
+
+**Example**:
+```bash
+curl -X POST "http://localhost:8000/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newuser@example.com",
+    "password": "SecurePass123!",
+    "name": "New User"
+  }'
+```
+
+#### `POST /api/auth/login` - Login
+Authenticate user and get JWT tokens.
+
+**Request Body**:
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!"
+}
+```
+
+**Response**: Same as register (user object + session tokens)
+
+**Status Codes**:
+- `200`: Login successful
+- `401`: Invalid credentials
+- `500`: Server error
+
+#### `POST /api/auth/refresh` - Refresh Access Token
+Get a new access token using refresh token.
+
+**Request Body**:
+```json
+{
+  "refresh_token": "your-refresh-token"
+}
+```
+
+**Response**:
+```json
+{
+  "access_token": "new-jwt-token",
+  "refresh_token": "new-refresh-token",
+  "expires_at": "2025-10-30T11:00:00Z"
+}
+```
+
+#### `GET /api/auth/me` - Get Current User Profile
+Get authenticated user's profile information.
+
+**Headers**:
+```
+Authorization: Bearer <access-token>
+```
+
+**Response**:
+```json
+{
+  "user_id": "uuid-string",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "org_id": "org-uuid",
+  "org_role": "admin",
+  "is_admin": true
+}
+```
+
+**Status Codes**:
+- `200`: Success
+- `401`: Unauthorized (no token or invalid token)
+
+#### `PATCH /api/auth/me` - Update Profile
+Update current user's profile.
+
+**Headers**:
+```
+Authorization: Bearer <access-token>
+```
+
+**Request Body**:
+```json
+{
+  "name": "Updated Name"
+}
+```
+
+**Response**: Updated user object
+
+#### `POST /api/auth/logout` - Logout
+Invalidate current session.
+
+**Headers**:
+```
+Authorization: Bearer <access-token>
+```
+
+**Response**:
+```json
+{
+  "message": "Successfully logged out"
+}
+```
+
+---
+
+### Organizations API
+
+Base path: `/api/organizations`
+
+**Important**: All organization endpoints require authentication.
+
+#### `POST /api/organizations/` - Create Organization
+Create a new organization. The creator automatically becomes the organization owner.
+
+**Headers**:
+```
+Authorization: Bearer <access-token>
+```
+
+**Request Body**:
+```json
+{
+  "name": "My Company",
+  "description": "Company description"
+}
+```
+
+**Response**:
+```json
+{
+  "id": "org-uuid",
+  "name": "My Company",
+  "description": "Company description",
+  "created_by": "user-uuid",
+  "created_at": "2025-10-30T10:00:00Z"
+}
+```
+
+**Status Codes**:
+- `201`: Organization created successfully
+- `400`: Validation error (e.g., user already in an organization)
+- `401`: Unauthorized
+- `500`: Server error
+
+#### `GET /api/organizations/my` - Get My Organization
+Get the organization that the current user belongs to.
+
+**Headers**:
+```
+Authorization: Bearer <access-token>
+```
+
+**Response**:
+```json
+{
+  "id": "org-uuid",
+  "name": "My Company",
+  "description": "Company description",
+  "member_count": 5,
+  "created_by": "user-uuid",
+  "created_at": "2025-10-30T10:00:00Z",
+  "members": [
+    {
+      "user_id": "user-uuid",
+      "email": "user@example.com",
+      "name": "User Name",
+      "role": "creator",
+      "joined_at": "2025-10-30T10:00:00Z"
+    }
+  ]
+}
+```
+
+**Status Codes**:
+- `200`: Success
+- `401`: Unauthorized
+- `404`: User not in any organization
+
+#### `GET /api/organizations/members` - List Organization Members
+Get all members of the current user's organization.
+
+**Headers**:
+```
+Authorization: Bearer <access-token>
+```
+
+**Response**:
+```json
+{
+  "members": [
+    {
+      "user_id": "user-uuid",
+      "email": "user@example.com",
+      "name": "User Name",
+      "role": "creator",
+      "joined_at": "2025-10-30T10:00:00Z"
+    }
+  ],
+  "total": 5
+}
+```
+
+#### `PATCH /api/organizations/members/{user_id}/role` - Update Member Role
+Update a member's role in the organization (admin and creator only).
+
+**Headers**:
+```
+Authorization: Bearer <access-token>
+```
+
+**Path Parameters**:
+- `user_id` (string, required): User ID
+
+**Request Body**:
+```json
+{
+  "role": "admin"  // "admin" | "interviewer" | "pending"
+}
+```
+
+**Response**: Updated member object
+
+**Status Codes**:
+- `200`: Role updated successfully
+- `400`: Invalid role or cannot modify creator
+- `401`: Unauthorized
+- `403`: Forbidden (requires admin or creator role)
+- `404`: Member not found
+
+#### `DELETE /api/organizations/members/{user_id}` - Remove Member
+Remove a member from the organization (admin and creator only).
+
+**Headers**:
+```
+Authorization: Bearer <access-token>
+```
+
+**Path Parameters**:
+- `user_id` (string, required): User ID
+
+**Response**: No content (204)
+
+**Status Codes**:
+- `204`: Member removed successfully
+- `400`: Cannot remove creator or last member
+- `401`: Unauthorized
+- `403`: Forbidden (requires admin or creator role)
+- `404`: Member not found
+
+---
+
 ### Candidates API
 
 Base path: `/api/candidates`
+
+**Authentication**: All endpoints require authentication with `Authorization: Bearer <token>` header. Data is automatically scoped to the user's organization.
 
 #### `GET /api/candidates/` - List Candidates
 Get paginated list of candidates with optional filters.
@@ -275,10 +615,12 @@ Get paginated list of candidates with optional filters.
 **Query Parameters**:
 - `name` (string, optional): Name fuzzy search (case-insensitive partial match)
 - `skills` (string[], optional): Skills filter (any match)
-- `min_score` (int, optional): Minimum score (1-4)
-- `max_score` (int, optional): Maximum score (1-4)
+- `min_score` (int, optional): Minimum score (0-10) - Global candidate quality score
+- `max_score` (int, optional): Maximum score (0-10) - Global candidate quality score
 - `limit` (int, default=20): Results per page (1-100)
 - `offset` (int, default=0): Page offset
+
+**Note**: The `score` field represents the candidate's **global quality score (0-10 scale)** based purely on resume content, independent from position matching scores (1-4 scale).
 
 **Response**:
 ```json
@@ -311,8 +653,8 @@ curl "http://localhost:8000/api/candidates/?name=张三"
 # Filter by skills
 curl "http://localhost:8000/api/candidates/?skills=Python&skills=React"
 
-# Score range
-curl "http://localhost:8000/api/candidates/?min_score=3&max_score=4"
+# Score range (0-10 scale global score)
+curl "http://localhost:8000/api/candidates/?min_score=7&max_score=10"
 ```
 
 #### `GET /api/candidates/{candidate_id}` - Get Candidate

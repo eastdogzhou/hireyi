@@ -1,6 +1,17 @@
 """Pydantic data models."""
 
 # Base models
+# Authentication models
+from .auth import (
+    AuthToken,
+    CurrentUser,
+    LoginRequest,
+    OrganizationMember,
+    PasswordResetRequest,
+    PasswordUpdateRequest,
+    RegisterRequest,
+    UserProfile,
+)
 from .base import (
     CreateSchema,
     DatabaseModel,
@@ -10,9 +21,6 @@ from .base import (
     UpdateSchema,
 )
 
-# User models
-from .user import User, UserCreate, UserResponse, UserUpdate
-
 # Candidate models
 from .candidate import (
     Candidate,
@@ -20,6 +28,27 @@ from .candidate import (
     CandidateListItem,
     CandidateResponse,
     CandidateUpdate,
+)
+
+# Interview Feedback models
+from .interview_feedback import (
+    InterviewFeedback,
+    InterviewFeedbackCreate,
+    InterviewFeedbackResponse,
+    InterviewFeedbackUpdate,
+    InterviewFeedbackWithDetails,
+    StatusChangeCreate,
+)
+
+# Organization models
+from .organization import (
+    MemberApprovalRequest,
+    MemberRoleUpdateRequest,
+    OrganizationCreate,
+    OrganizationInfo,
+    OrganizationJoinRequest,
+    OrganizationMemberInfo,
+    OrganizationWithRole,
 )
 
 # Position models
@@ -40,15 +69,8 @@ from .position_candidate import (
     PositionCandidateWithDetails,
 )
 
-# Interview Feedback models
-from .interview_feedback import (
-    InterviewFeedback,
-    InterviewFeedbackCreate,
-    InterviewFeedbackResponse,
-    InterviewFeedbackUpdate,
-    InterviewFeedbackWithDetails,
-    StatusChangeCreate,
-)
+# User models
+from .user import User, UserCreate, UserResponse, UserUpdate
 
 __all__ = [
     # Base
@@ -88,4 +110,21 @@ __all__ = [
     "InterviewFeedbackUpdate",
     "InterviewFeedbackWithDetails",
     "StatusChangeCreate",
+    # Authentication
+    "AuthToken",
+    "CurrentUser",
+    "LoginRequest",
+    "OrganizationMember",
+    "PasswordResetRequest",
+    "PasswordUpdateRequest",
+    "RegisterRequest",
+    "UserProfile",
+    # Organization
+    "MemberApprovalRequest",
+    "MemberRoleUpdateRequest",
+    "OrganizationCreate",
+    "OrganizationInfo",
+    "OrganizationJoinRequest",
+    "OrganizationMemberInfo",
+    "OrganizationWithRole",
 ]

@@ -117,10 +117,10 @@ export function useCreateStatusChange() {
   return useMutation({
     mutationFn: (data: {
       candidate_id: number
-      position_id: number
+      position_id?: number  // Optional: allows candidate-level status changes
       interviewer: number
       new_status: string
-      reason: string
+      comments: string
     }) => interviewApi.createStatusChange(data),
     onSuccess: (_, variables) => {
       // Invalidate feedback lists

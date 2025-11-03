@@ -13,12 +13,12 @@ interface ExecutionRecordsTimelineProps {
 }
 
 // 状态配置映射
-const STATUS_CONFIG: Record<CandidateStatus, { variant: 'default' | 'warning' | 'success' | 'error'; label: string }> = {
+const STATUS_CONFIG: Record<CandidateStatus, { variant: 'default' | 'warning' | 'success' | 'danger'; label: string }> = {
   screening: { variant: 'default', label: '筛选中' },
   interview: { variant: 'warning', label: '面试中' },
   offer: { variant: 'success', label: '已Offer' },
   hired: { variant: 'success', label: '已入职' },
-  rejected: { variant: 'error', label: '已拒绝' },
+  rejected: { variant: 'danger', label: '已拒绝' },
   withdrawn: { variant: 'default', label: '已撤回' },
 }
 

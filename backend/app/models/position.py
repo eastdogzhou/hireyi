@@ -7,7 +7,6 @@ from pydantic import Field
 
 from .base import CreateSchema, DatabaseModel, ResponseSchema, UpdateSchema
 
-
 # ============================================================================
 # Enums and Type Definitions
 # ============================================================================
@@ -18,6 +17,7 @@ PositionStatus = Literal["open", "closed"]
 # ============================================================================
 # Database Models
 # ============================================================================
+
 
 class Position(DatabaseModel):
     """Position database model."""
@@ -34,6 +34,7 @@ class Position(DatabaseModel):
 # Create Schemas
 # ============================================================================
 
+
 class PositionCreate(CreateSchema):
     """Schema for creating a new position."""
 
@@ -49,6 +50,7 @@ class PositionCreate(CreateSchema):
 # Update Schemas
 # ============================================================================
 
+
 class PositionUpdate(UpdateSchema):
     """Schema for updating a position."""
 
@@ -62,6 +64,7 @@ class PositionUpdate(UpdateSchema):
 # ============================================================================
 # Response Schemas
 # ============================================================================
+
 
 class PositionResponse(ResponseSchema):
     """Position response schema."""

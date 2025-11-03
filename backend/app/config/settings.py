@@ -24,9 +24,27 @@ class Settings(BaseSettings):
     # ============================================================================
     supabase_url: str = Field(..., description="Supabase project URL")
     supabase_anon_key: str = Field(..., description="Supabase anonymous key")
-    supabase_service_role_key: str = Field(
-        ..., description="Supabase service role key"
+    supabase_service_role_key: str = Field(..., description="Supabase service role key")
+    supabase_jwt_secret: str = Field(
+        ..., description="Supabase JWT secret for token verification"
     )
+
+    # ============================================================================
+    # Authentication Configuration
+    # ============================================================================
+    jwt_algorithm: str = Field(default="HS256", description="JWT signing algorithm")
+    jwt_access_token_expire_minutes: int = Field(
+        default=60 * 24,  # 24 hours
+        description="Access token expiration time in minutes",
+    )
+    jwt_refresh_token_expire_days: int = Field(
+        default=30, description="Refresh token expiration time in days"
+    )
+    password_min_length: int = Field(default=8, ge=8)
+    password_require_uppercase: bool = Field(default=True)
+    password_require_lowercase: bool = Field(default=True)
+    password_require_digit: bool = Field(default=True)
+    password_require_special: bool = Field(default=False)
 
     # ============================================================================
     # LLM Configuration
@@ -88,7 +106,7 @@ class Settings(BaseSettings):
     # CORS Configuration
     # ============================================================================
     cors_origins: list[str] = Field(
-        default=["http://localhost:3000", "http://localhost:5173"]
+        default=["http://localhost:5173"]
     )
     cors_allow_credentials: bool = Field(default=True)
 

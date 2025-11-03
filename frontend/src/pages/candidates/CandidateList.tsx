@@ -95,7 +95,7 @@ export default function CandidateList() {
     },
     {
       key: 'name',
-      title: '候选人',
+      title: '姓名',
       render: (_: any, record: any) => (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-semibold">
@@ -179,7 +179,7 @@ export default function CandidateList() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">人才库</h1>
-          <p className="text-gray-600 mt-1">管理和查看所有候选人信息</p>
+          <p className="text-gray-600 mt-1">管理和查看所有人才信息</p>
         </div>
         <div className="flex gap-3">
           <Button
@@ -189,13 +189,6 @@ export default function CandidateList() {
           >
             上传简历
           </Button>
-          <Button
-            variant="primary"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={handleCreateCandidate}
-          >
-            新增候选人
-          </Button>
         </div>
       </div>
 
@@ -204,7 +197,7 @@ export default function CandidateList() {
         <div className="p-4 flex flex-wrap gap-3">
           <div className="flex-1 min-w-[300px]">
             <SearchBar
-              placeholder="搜索候选人姓名..."
+              placeholder="搜索人才姓名..."
               value={searchParams.name}
               onChange={handleSearch}
             />
@@ -228,14 +221,14 @@ export default function CandidateList() {
           </div>
         ) : error ? (
           <div className="p-8">
-            <EmptyState title="加载失败" description="无法加载候选人列表，请稍后重试" />
+            <EmptyState title="加载失败" description="无法加载人才列表，请稍后重试" />
           </div>
         ) : !data || data.data.length === 0 ? (
           <div className="p-8">
             <EmptyState
               icon={<UserPlus className="w-12 h-12" />}
-              title="暂无候选人"
-              description="还没有候选人数据，点击上方按钮上传简历或新增候选人"
+              title="暂无人才"
+              description="还没有人才数据，点击上方按钮上传简历"
             />
           </div>
         ) : (

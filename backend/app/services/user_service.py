@@ -37,7 +37,9 @@ class UserService(BaseService[dict[str, Any]]):
         """
         # Check if email already exists
         if self.exists_by_email(data.get("email", "")):
-            logger.warning(f"Attempted to create user with existing email: {data.get('email')}")
+            logger.warning(
+                f"Attempted to create user with existing email: {data.get('email')}"
+            )
             raise ValueError(f"User with email {data.get('email')} already exists")
 
         logger.info(f"Creating user: {data.get('email')}")
@@ -54,10 +56,7 @@ class UserService(BaseService[dict[str, Any]]):
         logger.debug(f"Searching for user by email: {email}")
 
         response: APIResponse = (
-            self._get_active_query()
-            .eq("email", email)
-            .maybe_single()
-            .execute()
+            self._get_active_query().eq("email", email).maybe_single().execute()
         )
 
         if response.data:

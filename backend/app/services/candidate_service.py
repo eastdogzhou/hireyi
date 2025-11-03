@@ -41,17 +41,19 @@ class CandidateService(BaseService[dict[str, Any]]):
         supabase: Client,
         oss_service: OSSService,
         resume_parser: ResumeParser,
+        org_id: str | None = None,
     ):
         """Initialize candidate service.
 
         :param supabase: Supabase client instance
         :param oss_service: OSS file storage service
         :param resume_parser: Resume parsing service
+        :param org_id: Organization ID for data isolation (optional)
         """
-        super().__init__(supabase, "candidates")
+        super().__init__(supabase, "candidates", org_id=org_id)
         self.oss_service = oss_service
         self.resume_parser = resume_parser
-        logger.info("CandidateService initialized")
+        logger.info(f"CandidateService initialized{' with org_id=' + org_id if org_id else ''}")
 
     def find_by_unique_key(
         self,
@@ -84,9 +86,7 @@ class CandidateService(BaseService[dict[str, Any]]):
             )
 
             if response and response.data:
-                logger.info(
-                    f"Candidate found by name+phone: {response.data.get('id')}"
-                )
+                logger.info(f"Candidate found by name+phone: {response.data.get('id')}")
                 return response.data
 
         # Priority 2: Check resume_md5
@@ -98,9 +98,7 @@ class CandidateService(BaseService[dict[str, Any]]):
         )
 
         if response and response.data:
-            logger.info(
-                f"Candidate found by resume_md5: {response.data.get('id')}"
-            )
+            logger.info(f"Candidate found by resume_md5: {response.data.get('id')}")
             return response.data
 
         logger.debug("No existing candidate found")
@@ -330,7 +328,9 @@ class CandidateService(BaseService[dict[str, Any]]):
                     if resume_text:
                         try:
                             logger.info("Calculating global score...")
-                            score_result = await self.calculate_global_score(resume_text)
+                            score_result = await self.calculate_global_score(
+                                resume_text
+                            )
                             # Store only the total score in candidate record
                             parsed_data["score"] = int(score_result["total_score"])
                             logger.info(
@@ -443,33 +443,39 @@ class CandidateService(BaseService[dict[str, Any]]):
                 if result["parse_status"] in ["success", "parse_failed"]:
                     # Consider partial success (file uploaded but parse failed)
                     successful += 1
-                    results.append({
-                        "file_name": file_name,
-                        "status": "success",
-                        "candidate": result["candidate"],
-                        "parse_status": result["parse_status"],
-                        "error": None,
-                    })
+                    results.append(
+                        {
+                            "file_name": file_name,
+                            "status": "success",
+                            "candidate": result["candidate"],
+                            "parse_status": result["parse_status"],
+                            "error": None,
+                        }
+                    )
                 else:
                     failed += 1
-                    results.append({
-                        "file_name": file_name,
-                        "status": "failed",
-                        "candidate": None,
-                        "parse_status": result["parse_status"],
-                        "error": result.get("error"),
-                    })
+                    results.append(
+                        {
+                            "file_name": file_name,
+                            "status": "failed",
+                            "candidate": None,
+                            "parse_status": result["parse_status"],
+                            "error": result.get("error"),
+                        }
+                    )
 
             except Exception as e:
                 logger.error(f"Error processing {file_name}: {e}")
                 failed += 1
-                results.append({
-                    "file_name": file_name,
-                    "status": "failed",
-                    "candidate": None,
-                    "parse_status": "error",
-                    "error": str(e),
-                })
+                results.append(
+                    {
+                        "file_name": file_name,
+                        "status": "failed",
+                        "candidate": None,
+                        "parse_status": "error",
+                        "error": str(e),
+                    }
+                )
 
         logger.info(
             f"Batch upload completed: {successful}/{total} successful, {failed} failed"
@@ -495,10 +501,12 @@ class CandidateService(BaseService[dict[str, Any]]):
 
         # Cascade soft delete to position_candidates
         try:
-            logger.info(f"Cascading soft delete to position_candidates")
-            self.supabase.table("position_candidates").update({
-                "is_deleted": True,
-            }).eq("candidate_id", record_id).eq("is_deleted", False).execute()
+            logger.info("Cascading soft delete to position_candidates")
+            self.supabase.table("position_candidates").update(
+                {
+                    "is_deleted": True,
+                }
+            ).eq("candidate_id", record_id).eq("is_deleted", False).execute()
 
             logger.info(f"Candidate and related records soft deleted: {record_id}")
         except Exception as e:

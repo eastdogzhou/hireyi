@@ -27,6 +27,7 @@ frontend/.env
 frontend/.env.local
 frontend/coverage/
 frontend/.vite/
+frontend/.npm-cache/
 
 # IDE
 .vscode/
@@ -54,3 +55,12 @@ yarn-error.log*
 .cache/
 temp/
 tmp/
+backend/uv.lock
+.playwright-mcp/
+
+# Temporary test files
+test_*.html
+test_*.js
+
+# Reference (deprecated)
+reference/

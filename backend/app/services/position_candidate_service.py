@@ -29,16 +29,18 @@ class PositionCandidateService(BaseService[dict[str, Any]]):
     - Advanced filtering and sorting
     """
 
-    def __init__(self, supabase: Client):
+    def __init__(self, supabase: Client, org_id: str | None = None):
         """Initialize position-candidate service.
 
         :param supabase: Supabase client instance
+        :param org_id: Organization ID for data isolation (optional)
         """
-        super().__init__(supabase, "position_candidates")
+        super().__init__(supabase, "position_candidates", org_id=org_id)
         # Import here to avoid circular import
         from app.services.interview_feedback_service import InterviewFeedbackService
-        self.feedback_service = InterviewFeedbackService(supabase)
-        logger.info("PositionCandidateService initialized")
+
+        self.feedback_service = InterviewFeedbackService(supabase, org_id=org_id)
+        logger.info(f"PositionCandidateService initialized{' with org_id=' + org_id if org_id else ''}")
 
     def _calculate_overall_score(
         self,
@@ -131,10 +133,15 @@ class PositionCandidateService(BaseService[dict[str, Any]]):
                     operator=operator,
                     source=source,
                 )
-                logger.info(f"Execution record created for association: position={position_id}, candidate={candidate_id}")
+                logger.info(
+                    f"Execution record created for association: position={position_id}, candidate={candidate_id}"
+                )
             except Exception as feedback_error:
                 # Log but don't fail the association creation
-                logger.error(f"Failed to create execution record: {feedback_error}", exc_info=True)
+                logger.error(
+                    f"Failed to create execution record: {feedback_error}",
+                    exc_info=True,
+                )
 
             return association
         except Exception as e:
@@ -170,7 +177,11 @@ class PositionCandidateService(BaseService[dict[str, Any]]):
             raise ValueError(f"Association {record_id} not found")
 
         # Use new scores or keep existing
-        new_relevance = relevance_score if relevance_score is not None else current["relevance_score"]
+        new_relevance = (
+            relevance_score
+            if relevance_score is not None
+            else current["relevance_score"]
+        )
         new_fit = fit_score if fit_score is not None else current["fit_score"]
 
         # Validate scores
@@ -208,9 +219,18 @@ class PositionCandidateService(BaseService[dict[str, Any]]):
         logger.info(f"Updating status for association {record_id} to: {new_status}")
 
         # Validate status
-        valid_statuses = ["screening", "interview", "offer", "hired", "rejected", "withdrawn"]
+        valid_statuses = [
+            "screening",
+            "interview",
+            "offer",
+            "hired",
+            "rejected",
+            "withdrawn",
+        ]
         if new_status not in valid_statuses:
-            raise ValueError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+            raise ValueError(
+                f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            )
 
         association = self.update(record_id, {"current_status": new_status})
         logger.info(f"Status updated successfully: {record_id}")
@@ -286,9 +306,7 @@ class PositionCandidateService(BaseService[dict[str, Any]]):
         :param offset: Number of records to skip
         :return: Dictionary with associations list, total count, limit, and offset
         """
-        logger.debug(
-            f"Getting positions for candidate {candidate_id}: status={status}"
-        )
+        logger.debug(f"Getting positions for candidate {candidate_id}: status={status}")
 
         # Start with base query
         query = self._get_active_query(count="exact").eq("candidate_id", candidate_id)
@@ -387,7 +405,9 @@ class PositionCandidateService(BaseService[dict[str, Any]]):
         :param status: Status to count
         :return: Count of candidates with the status
         """
-        logger.debug(f"Counting candidates with status {status} for position {position_id}")
+        logger.debug(
+            f"Counting candidates with status {status} for position {position_id}"
+        )
 
         response: APIResponse = (
             self._get_active_query()
@@ -459,7 +479,9 @@ class PositionCandidateService(BaseService[dict[str, Any]]):
         candidates = response.data
         total = response.count if response.count is not None else len(candidates)
 
-        logger.debug(f"Found {total} candidates with details for position {position_id}")
+        logger.debug(
+            f"Found {total} candidates with details for position {position_id}"
+        )
 
         return {
             "candidates": candidates,

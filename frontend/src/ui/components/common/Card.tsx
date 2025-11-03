@@ -26,6 +26,11 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
    * Padding size
    */
   padding?: 'none' | 'sm' | 'md' | 'lg';
+
+  /**
+   * Allow overflow visible (useful for dropdowns inside card)
+   */
+  overflowVisible?: boolean;
 }
 
 /**
@@ -39,13 +44,16 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       hoverable = false,
       orangeBorder = false,
       padding = 'md',
+      overflowVisible = false,
       children,
       ...props
     },
     ref
   ) => {
-    const baseStyles =
-      'bg-white rounded-xl overflow-hidden transition-all duration-200';
+    const baseStyles = cn(
+      'bg-white rounded-xl transition-all duration-200',
+      !overflowVisible && 'overflow-hidden'
+    );
 
     const variantStyles = {
       default: 'shadow-sm border border-gray-200',

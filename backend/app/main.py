@@ -1,12 +1,20 @@
 """FastAPI application entry point."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api import (
+    auth,
+    candidates,
+    interview_feedbacks,
+    organizations,
+    positions,
+    users,
+)
 from app.config.settings import get_settings
 
 # Configure logging
@@ -22,7 +30,7 @@ settings = get_settings()
 
 # Create FastAPI application
 app = FastAPI(
-    title="AI Resume Scanning System",
+    title="hireyi",
     description="AI-powered resume management and intelligent candidate-position matching",
     version="0.1.0",
     docs_url="/docs",
@@ -63,9 +71,11 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         status_code=500,
         content={
             "error": "Internal server error",
-            "detail": str(exc) if settings.environment == "development" else "An error occurred",
+            "detail": str(exc)
+            if settings.environment == "development"
+            else "An error occurred",
             "path": str(request.url),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         },
     )
 
@@ -85,14 +95,14 @@ async def health_check() -> dict:
         "status": "healthy",
         "version": "0.1.0",
         "environment": settings.environment,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
     # Check database connectivity
     try:
         supabase = get_supabase()
         # Simple query to verify connection
-        result = supabase.table("users").select("count").limit(1).execute()
+        _ = supabase.table("users").select("count").limit(1).execute()
         health_status["database"] = "connected"
         logger.debug("Database health check: connected")
     except Exception as e:
@@ -111,7 +121,7 @@ async def root() -> dict:
     :return: API welcome message and links
     """
     return {
-        "message": "AI Resume Scanning System API",
+        "message": "hireyi API",
         "version": "0.1.0",
         "docs": "/docs",
         "redoc": "/redoc",
@@ -120,8 +130,11 @@ async def root() -> dict:
 
 
 # Include API routers
-from app.api import candidates, interview_feedbacks, positions, users
+# Authentication and organization routes (no auth required)
+app.include_router(auth.router)
+app.include_router(organizations.router)
 
+# Business logic routes (auth required - will be updated)
 app.include_router(candidates.router)
 app.include_router(positions.router)
 app.include_router(interview_feedbacks.router)
@@ -135,7 +148,7 @@ async def startup_event() -> None:
 
     Performs initialization tasks like logging configuration check.
     """
-    logger.info("Starting AI Resume Scanning System API")
+    logger.info("Starting hireyi API")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Supabase URL: {settings.supabase_url}")
     logger.info("Application startup complete")
@@ -148,4 +161,4 @@ async def shutdown_event() -> None:
 
     Performs cleanup tasks.
     """
-    logger.info("Shutting down AI Resume Scanning System API")
+    logger.info("Shutting down hireyi API")

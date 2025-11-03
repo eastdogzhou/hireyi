@@ -1,4 +1,4 @@
-"""Position API routes."""
+"""Position API routes with authentication."""
 
 from __future__ import annotations
 
@@ -14,6 +14,8 @@ from app.api.dependencies import (
     get_position_service,
     get_smart_screening_service,
 )
+from app.middleware.auth import require_organization
+from app.models.auth import CurrentUser
 from app.models.position import PositionCreate, PositionResponse, PositionUpdate
 from app.services.position_candidate_service import PositionCandidateService
 from app.services.position_service import PositionService
@@ -53,13 +55,13 @@ class StatusUpdateRequest(BaseModel):
 
 @router.get("/", response_model=PositionListResponse)
 async def get_positions(
+    current_user: CurrentUser = Depends(require_organization),
     title: str | None = Query(None, description="Title fuzzy search"),
     department: str | None = Query(None, description="Department filter"),
     status: str | None = Query(None, description="Status filter (open/closed)"),
     limit: int = Query(20, ge=1, le=100, description="Results per page"),
     offset: int = Query(0, ge=0, description="Page offset"),
-    position_service: PositionService = Depends(get_position_service),
-) -> PositionListResponse:
+    ) -> PositionListResponse:
     """Get paginated list of positions with optional filters.
 
     Supports:
@@ -77,11 +79,15 @@ async def get_positions(
     :return: Paginated position list
     """
     logger.info(
-        f"GET /api/positions - title={title}, department={department}, "
+        f"GET /api/positions - user={current_user.user_id}, org={current_user.org_id}, "
+        f"title={title}, department={department}, "
         f"status={status}, limit={limit}, offset={offset}"
     )
 
     try:
+
+
+        position_service = get_position_service(org_id=current_user.org_id)
         result = await run_in_threadpool(
             position_service.search_positions,
             title_query=title,
@@ -97,24 +103,27 @@ async def get_positions(
         logger.error(f"Error searching positions: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to search positions: {str(e)}",
+            detail=f"Failed to search positions: {e!s}",
         )
 
 
 @router.get("/{position_id}", response_model=PositionResponse)
 async def get_position(
     position_id: int,
-    position_service: PositionService = Depends(get_position_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> PositionResponse:
     """Get position details by ID.
 
+    Requires authentication and organization membership.
+
     :param position_id: Position ID
-    :param position_service: Injected position service
+    :param current_user: Current authenticated user with organization
     :return: Position details
     :raises HTTPException: If position not found
     """
-    logger.info(f"GET /api/positions/{position_id}")
+    logger.info(f"GET /api/positions/{position_id} - user={current_user.user_id}, org={current_user.org_id}")
 
+    position_service = get_position_service(org_id=current_user.org_id)
     position = await run_in_threadpool(position_service.get_by_id, position_id)
 
     if not position:
@@ -129,17 +138,20 @@ async def get_position(
 @router.post("/", response_model=PositionResponse, status_code=status.HTTP_201_CREATED)
 async def create_position(
     position_data: PositionCreate,
-    position_service: PositionService = Depends(get_position_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> PositionResponse:
     """Create a new position.
 
+    Requires authentication and organization membership.
+
     :param position_data: Position creation data
-    :param position_service: Injected position service
+    :param current_user: Current authenticated user with organization
     :return: Created position
     """
-    logger.info(f"POST /api/positions - title={position_data.title}")
+    logger.info(f"POST /api/positions - user={current_user.user_id}, org={current_user.org_id}, title={position_data.title}")
 
     try:
+        position_service = get_position_service(org_id=current_user.org_id)
         position = await run_in_threadpool(
             position_service.create,
             position_data.model_dump(),
@@ -151,7 +163,7 @@ async def create_position(
         logger.error(f"Error creating position: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create position: {str(e)}",
+            detail=f"Failed to create position: {e!s}",
         )
 
 
@@ -159,17 +171,21 @@ async def create_position(
 async def update_position(
     position_id: int,
     position_data: PositionUpdate,
-    position_service: PositionService = Depends(get_position_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> PositionResponse:
     """Update position information.
 
+    Requires authentication and organization membership.
+
     :param position_id: Position ID
     :param position_data: Position update data
-    :param position_service: Injected position service
+    :param current_user: Current authenticated user with organization
     :return: Updated position
     :raises HTTPException: If position not found
     """
-    logger.info(f"PATCH /api/positions/{position_id}")
+    logger.info(f"PATCH /api/positions/{position_id} - user={current_user.user_id}, org={current_user.org_id}")
+
+    position_service = get_position_service(org_id=current_user.org_id)
 
     # Check if position exists
     if not await run_in_threadpool(position_service.exists, position_id):
@@ -194,7 +210,7 @@ async def update_position(
         logger.error(f"Error updating position: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update position: {str(e)}",
+            detail=f"Failed to update position: {e!s}",
         )
 
 
@@ -202,17 +218,21 @@ async def update_position(
 async def update_position_status(
     position_id: int,
     status_update: StatusUpdateRequest,
-    position_service: PositionService = Depends(get_position_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> PositionResponse:
     """Update position status (open/closed).
 
+    Requires authentication and organization membership.
+
     :param position_id: Position ID
     :param status_update: Status update request
-    :param position_service: Injected position service
+    :param current_user: Current authenticated user with organization
     :return: Updated position
     :raises HTTPException: If position not found or invalid status
     """
-    logger.info(f"PATCH /api/positions/{position_id}/status - status={status_update.status}")
+    logger.info(
+        f"PATCH /api/positions/{position_id}/status - user={current_user.user_id}, org={current_user.org_id}, status={status_update.status}"
+    )
 
     # Validate status
     if status_update.status not in ["open", "closed"]:
@@ -222,6 +242,7 @@ async def update_position_status(
         )
 
     try:
+        position_service = get_position_service(org_id=current_user.org_id)
         position = await run_in_threadpool(
             position_service.update_status,
             position_id,
@@ -241,24 +262,27 @@ async def update_position_status(
         logger.error(f"Error updating position status: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update position status: {str(e)}",
+            detail=f"Failed to update position status: {e!s}",
         )
 
 
 @router.delete("/{position_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_position(
     position_id: int,
-    position_service: PositionService = Depends(get_position_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> None:
     """Soft delete a position.
 
+    Requires authentication and organization membership.
     Also cascade soft-deletes all associated position_candidates records.
 
     :param position_id: Position ID
-    :param position_service: Injected position service
+    :param current_user: Current authenticated user with organization
     :raises HTTPException: If position not found
     """
-    logger.info(f"DELETE /api/positions/{position_id}")
+    logger.info(f"DELETE /api/positions/{position_id} - user={current_user.user_id}, org={current_user.org_id}")
+
+    position_service = get_position_service(org_id=current_user.org_id)
 
     # Check if position exists
     if not await run_in_threadpool(position_service.exists, position_id):
@@ -275,7 +299,7 @@ async def delete_position(
         logger.error(f"Error deleting position: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete position: {str(e)}",
+            detail=f"Failed to delete position: {e!s}",
         )
 
 
@@ -287,8 +311,12 @@ async def delete_position(
 class SmartScreeningRequest(BaseModel):
     """Request model for smart screening."""
 
-    max_candidates: int = Query(100, ge=1, le=200, description="Maximum number of candidates to screen")
-    recalculate_existing: bool = Query(True, description="Recalculate scores for existing associations")
+    max_candidates: int = Query(
+        100, ge=1, le=200, description="Maximum number of candidates to screen"
+    )
+    recalculate_existing: bool = Query(
+        True, description="Recalculate scores for existing associations"
+    )
 
 
 class SmartScreeningResponse(BaseModel):
@@ -306,31 +334,40 @@ class SmartScreeningResponse(BaseModel):
 @router.post("/{position_id}/smart-screening", response_model=SmartScreeningResponse)
 async def smart_screening(
     position_id: int,
-    max_candidates: int = Query(100, ge=1, le=200, description="Maximum number of candidates to screen"),
-    min_score: int = Query(1, ge=1, le=4, description="Minimum score (1-4 stars) to accept"),
-    recalculate_existing: bool = Query(True, description="Recalculate scores for existing associations"),
-    position_service: PositionService = Depends(get_position_service),
-    screening_service: SmartScreeningService = Depends(get_smart_screening_service),
+    current_user: CurrentUser = Depends(require_organization),
+    max_candidates: int = Query(
+        100, ge=1, le=200, description="Maximum number of candidates to screen"
+    ),
+    min_score: int = Query(
+        1, ge=1, le=4, description="Minimum score (1-4 stars) to accept"
+    ),
+    recalculate_existing: bool = Query(
+        True, description="Recalculate scores for existing associations"
+    ),
 ) -> SmartScreeningResponse:
     """Trigger intelligent candidate screening for a position.
+
+    Requires authentication and organization membership.
 
     Two-phase approach:
     1. Pre-screening: Filter candidates by keywords (top 100-200)
     2. AI ranking: Use LLM to score pre-screened candidates
 
     :param position_id: Position ID
+    :param current_user: Current authenticated user with organization
     :param max_candidates: Maximum number of candidates to link (default: 100)
     :param min_score: Minimum overall score to accept (1-4, default: 1)
     :param recalculate_existing: Whether to recalculate scores for existing links (default: True)
-    :param position_service: Injected position service
-    :param screening_service: Injected smart screening service
     :return: Screening results
     :raises HTTPException: If position not found or screening fails
     """
     logger.info(
-        f"POST /api/positions/{position_id}/smart-screening - "
+        f"POST /api/positions/{position_id}/smart-screening - user={current_user.user_id}, org={current_user.org_id}, "
         f"max_candidates={max_candidates}, min_score={min_score}, recalculate={recalculate_existing}"
     )
+
+    position_service = get_position_service(org_id=current_user.org_id)
+    screening_service = get_smart_screening_service(org_id=current_user.org_id)
 
     # Check if position exists
     if not await run_in_threadpool(position_service.exists, position_id):
@@ -349,7 +386,7 @@ async def smart_screening(
 
         # Optionally recalculate scores for existing associations
         if recalculate_existing:
-            logger.info(f"Recalculating scores for existing associations")
+            logger.info("Recalculating scores for existing associations")
             await screening_service.recalculate_scores_for_position(
                 position_id=position_id,
             )
@@ -381,45 +418,50 @@ async def smart_screening(
         logger.error(f"Error during smart screening: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to perform smart screening: {str(e)}",
+            detail=f"Failed to perform smart screening: {e!s}",
         )
 
 
 @router.get("/{position_id}/candidates")
 async def get_position_candidates(
     position_id: int,
-    candidate_status: str | None = Query(None, description="Filter by candidate status", alias="status"),
+    current_user: CurrentUser = Depends(require_organization),
+    candidate_status: str | None = Query(
+        None, description="Filter by candidate status", alias="status"
+    ),
     candidate_name: str | None = Query(None, description="Search by candidate name"),
     sort_by: str = Query("overall_score_numeric", description="Sort field"),
     sort_order: str = Query("desc", description="Sort order (asc/desc)"),
     limit: int = Query(20, ge=1, le=100, description="Results per page"),
     offset: int = Query(0, ge=0, description="Page offset"),
-    position_service: PositionService = Depends(get_position_service),
-    pc_service: PositionCandidateService = Depends(get_position_candidate_service),
 ) -> dict[str, Any]:
     """Get candidates associated with a position (with full candidate details).
+
+    Requires authentication and organization membership.
 
     Returns position-candidate associations with complete candidate information
     via JOIN query. Supports filtering, searching, sorting, and pagination.
 
     :param position_id: Position ID
-    :param status: Filter by candidate status (screening, interview, offer, etc.)
+    :param current_user: Current authenticated user with organization
+    :param candidate_status: Filter by candidate status (screening, interview, offer, etc.)
     :param candidate_name: Search by candidate name (fuzzy match)
     :param sort_by: Field to sort by (default: overall_score_numeric)
     :param sort_order: Sort order asc or desc (default: desc)
     :param limit: Maximum number of results (default: 20)
     :param offset: Number of records to skip (default: 0)
-    :param position_service: Injected position service
-    :param pc_service: Injected position-candidate service
     :return: Paginated candidate list with scoring and details
     :raises HTTPException: If position not found
     """
     logger.info(
-        f"GET /api/positions/{position_id}/candidates - "
+        f"GET /api/positions/{position_id}/candidates - user={current_user.user_id}, org={current_user.org_id}, "
         f"status={candidate_status}, candidate_name={candidate_name}, "
         f"sort_by={sort_by}, sort_order={sort_order}, "
         f"limit={limit}, offset={offset}"
     )
+
+    position_service = get_position_service(org_id=current_user.org_id)
+    pc_service = get_position_candidate_service(org_id=current_user.org_id)
 
     # Check if position exists
     if not await run_in_threadpool(position_service.exists, position_id):
@@ -440,9 +482,7 @@ async def get_position_candidates(
             offset=offset,
         )
 
-        logger.info(
-            f"Found {result['total']} candidates for position {position_id}"
-        )
+        logger.info(f"Found {result['total']} candidates for position {position_id}")
 
         return result
 
@@ -450,17 +490,18 @@ async def get_position_candidates(
         logger.error(f"Error fetching position candidates: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch position candidates: {str(e)}",
+            detail=f"Failed to fetch position candidates: {e!s}",
         )
 
 
 @router.post("/{position_id}/recalculate-scores")
 async def recalculate_scores(
     position_id: int,
-    position_service: PositionService = Depends(get_position_service),
-    pc_service: PositionCandidateService = Depends(get_position_candidate_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> dict[str, Any]:
     """Recalculate scores for all candidates associated with a position.
+
+    Requires authentication and organization membership.
 
     Useful when:
     - Job requirements are updated
@@ -468,12 +509,14 @@ async def recalculate_scores(
     - Manual score refresh is needed
 
     :param position_id: Position ID
-    :param position_service: Injected position service
-    :param pc_service: Injected position-candidate service
+    :param current_user: Current authenticated user with organization
     :return: Recalculation results
     :raises HTTPException: If position not found or recalculation fails
     """
-    logger.info(f"POST /api/positions/{position_id}/recalculate-scores")
+    logger.info(f"POST /api/positions/{position_id}/recalculate-scores - user={current_user.user_id}, org={current_user.org_id}")
+
+    position_service = get_position_service(org_id=current_user.org_id)
+    pc_service = get_position_candidate_service(org_id=current_user.org_id)
 
     # Check if position exists
     if not await run_in_threadpool(position_service.exists, position_id):
@@ -501,5 +544,5 @@ async def recalculate_scores(
         logger.error(f"Error recalculating scores: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to recalculate scores: {str(e)}",
+            detail=f"Failed to recalculate scores: {e!s}",
         )

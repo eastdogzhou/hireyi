@@ -1,4 +1,4 @@
-"""Candidate API routes."""
+"""Candidate API routes with authentication."""
 
 from __future__ import annotations
 
@@ -13,6 +13,8 @@ from app.api.dependencies import (
     get_candidate_service,
     get_position_candidate_service,
 )
+from app.middleware.auth import require_organization
+from app.models.auth import CurrentUser
 from app.models.candidate import CandidateCreate, CandidateResponse, CandidateUpdate
 from app.services.candidate_service import CandidateService
 from app.services.position_candidate_service import PositionCandidateService
@@ -78,15 +80,18 @@ class BatchUploadResponse(BaseModel):
 
 @router.get("/", response_model=CandidateListResponse)
 async def get_candidates(
+    current_user: CurrentUser = Depends(require_organization),
     name: str | None = Query(None, description="Name fuzzy search"),
     skills: list[str] | None = Query(None, description="Skills filter (any match)"),
     min_score: int | None = Query(None, ge=1, le=4, description="Minimum score (1-4)"),
     max_score: int | None = Query(None, ge=1, le=4, description="Maximum score (1-4)"),
     limit: int = Query(20, ge=1, le=100, description="Results per page"),
     offset: int = Query(0, ge=0, description="Page offset"),
-    candidate_service: CandidateService = Depends(get_candidate_service),
 ) -> CandidateListResponse:
     """Get paginated list of candidates with optional filters.
+
+    Requires authentication and organization membership.
+    Returns only candidates within the current user's organization.
 
     Supports:
     - Name fuzzy search (case-insensitive partial match)
@@ -94,21 +99,22 @@ async def get_candidates(
     - Score range filtering (1-4 scale)
     - Pagination
 
+    :param current_user: Current authenticated user with organization
     :param name: Name search query
     :param skills: List of skills to filter by
     :param min_score: Minimum score (inclusive)
     :param max_score: Maximum score (inclusive)
     :param limit: Maximum number of results
     :param offset: Number of records to skip
-    :param candidate_service: Injected candidate service
     :return: Paginated candidate list
     """
     logger.info(
-        f"GET /api/candidates - name={name}, skills={skills}, "
-        f"score={min_score}-{max_score}, limit={limit}, offset={offset}"
+        f"GET /api/candidates - user={current_user.user_id}, org={current_user.org_id}, "
+        f"name={name}, skills={skills}, score={min_score}-{max_score}, limit={limit}, offset={offset}"
     )
 
     try:
+        candidate_service = get_candidate_service(org_id=current_user.org_id)
         result = await run_in_threadpool(
             candidate_service.search_candidates,
             name_query=name,
@@ -125,24 +131,30 @@ async def get_candidates(
         logger.error(f"Error searching candidates: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to search candidates: {str(e)}",
+            detail=f"Failed to search candidates: {e!s}",
         )
 
 
 @router.get("/{candidate_id}", response_model=CandidateResponse)
 async def get_candidate(
     candidate_id: int,
-    candidate_service: CandidateService = Depends(get_candidate_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> CandidateResponse:
     """Get candidate details by ID.
 
-    :param candidate_id: Candidate ID
-    :param candidate_service: Injected candidate service
-    :return: Candidate details
-    :raises HTTPException: If candidate not found
-    """
-    logger.info(f"GET /api/candidates/{candidate_id}")
+    Requires authentication and organization membership.
+    Returns only if candidate belongs to the current user's organization.
 
+    :param candidate_id: Candidate ID
+    :param current_user: Current authenticated user with organization
+    :return: Candidate details
+    :raises HTTPException: If candidate not found or not accessible
+    """
+    logger.info(
+        f"GET /api/candidates/{candidate_id} - user={current_user.user_id}, org={current_user.org_id}"
+    )
+
+    candidate_service = get_candidate_service(org_id=current_user.org_id)
     candidate = await run_in_threadpool(candidate_service.get_by_id, candidate_id)
 
     if not candidate:
@@ -157,17 +169,23 @@ async def get_candidate(
 @router.post("/", response_model=CandidateResponse, status_code=status.HTTP_201_CREATED)
 async def create_candidate(
     candidate_data: CandidateCreate,
-    candidate_service: CandidateService = Depends(get_candidate_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> CandidateResponse:
     """Create a new candidate.
 
+    Requires authentication and organization membership.
+    Candidate is created within the current user's organization.
+
     :param candidate_data: Candidate creation data
-    :param candidate_service: Injected candidate service
+    :param current_user: Current authenticated user with organization
     :return: Created candidate
     """
-    logger.info(f"POST /api/candidates - name={candidate_data.name}")
+    logger.info(
+        f"POST /api/candidates - user={current_user.user_id}, org={current_user.org_id}, name={candidate_data.name}"
+    )
 
     try:
+        candidate_service = get_candidate_service(org_id=current_user.org_id)
         candidate = await run_in_threadpool(
             candidate_service.create,
             candidate_data.model_dump(),
@@ -179,7 +197,7 @@ async def create_candidate(
         logger.error(f"Error creating candidate: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create candidate: {str(e)}",
+            detail=f"Failed to create candidate: {e!s}",
         )
 
 
@@ -187,17 +205,24 @@ async def create_candidate(
 async def update_candidate(
     candidate_id: int,
     candidate_data: CandidateUpdate,
-    candidate_service: CandidateService = Depends(get_candidate_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> CandidateResponse:
     """Update candidate information.
 
+    Requires authentication and organization membership.
+    Only updates candidates within the current user's organization.
+
     :param candidate_id: Candidate ID
     :param candidate_data: Candidate update data
-    :param candidate_service: Injected candidate service
+    :param current_user: Current authenticated user with organization
     :return: Updated candidate
-    :raises HTTPException: If candidate not found
+    :raises HTTPException: If candidate not found or not accessible
     """
-    logger.info(f"PATCH /api/candidates/{candidate_id}")
+    logger.info(
+        f"PATCH /api/candidates/{candidate_id} - user={current_user.user_id}, org={current_user.org_id}"
+    )
+
+    candidate_service = get_candidate_service(org_id=current_user.org_id)
 
     # Check if candidate exists
     if not await run_in_threadpool(candidate_service.exists, candidate_id):
@@ -222,24 +247,30 @@ async def update_candidate(
         logger.error(f"Error updating candidate: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update candidate: {str(e)}",
+            detail=f"Failed to update candidate: {e!s}",
         )
 
 
 @router.delete("/{candidate_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_candidate(
     candidate_id: int,
-    candidate_service: CandidateService = Depends(get_candidate_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> None:
     """Soft delete a candidate.
 
+    Requires authentication and organization membership.
+    Only deletes candidates within the current user's organization.
     Also cascade soft-deletes all associated position_candidates records.
 
     :param candidate_id: Candidate ID
-    :param candidate_service: Injected candidate service
-    :raises HTTPException: If candidate not found
+    :param current_user: Current authenticated user with organization
+    :raises HTTPException: If candidate not found or not accessible
     """
-    logger.info(f"DELETE /api/candidates/{candidate_id}")
+    logger.info(
+        f"DELETE /api/candidates/{candidate_id} - user={current_user.user_id}, org={current_user.org_id}"
+    )
+
+    candidate_service = get_candidate_service(org_id=current_user.org_id)
 
     # Check if candidate exists
     if not await run_in_threadpool(candidate_service.exists, candidate_id):
@@ -256,18 +287,22 @@ async def delete_candidate(
         logger.error(f"Error deleting candidate: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete candidate: {str(e)}",
+            detail=f"Failed to delete candidate: {e!s}",
         )
 
 
-@router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/upload", response_model=UploadResponse, status_code=status.HTTP_201_CREATED
+)
 async def upload_resume(
     file: UploadFile = File(..., description="Resume file (PDF)"),
     position_id: int | None = Query(None, description="Optionally link to position"),
-    candidate_service: CandidateService = Depends(get_candidate_service),
-    pc_service: PositionCandidateService = Depends(get_position_candidate_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> UploadResponse:
     """Upload resume and create candidate with AI parsing.
+
+    Requires authentication and organization membership.
+    Candidate is created within the current user's organization.
 
     Workflow:
     1. Upload file to OSS
@@ -277,11 +312,13 @@ async def upload_resume(
 
     :param file: Resume file upload
     :param position_id: Optional position ID to link candidate
-    :param candidate_service: Injected candidate service
-    :param pc_service: Injected position-candidate service
+    :param current_user: Current authenticated user with organization
     :return: Upload result with candidate data
     """
-    logger.info(f"POST /api/candidates/upload - file={file.filename}, position={position_id}")
+    logger.info(
+        f"POST /api/candidates/upload - user={current_user.user_id}, org={current_user.org_id}, "
+        f"file={file.filename}, position={position_id}"
+    )
 
     # Validate file type
     if not file.filename:
@@ -300,6 +337,9 @@ async def upload_resume(
         # Read file content
         file_content = await file.read()
 
+        candidate_service = get_candidate_service(org_id=current_user.org_id)
+        pc_service = get_position_candidate_service(org_id=current_user.org_id)
+
         # Upload and parse
         result = await candidate_service.upload_and_create_from_resume(
             file_content=file_content,
@@ -310,9 +350,7 @@ async def upload_resume(
         # Build response
         response = UploadResponse(
             status=result["parse_status"],
-            candidate=CandidateResponse(**result["candidate"])
-            if result["candidate"]
-            else None,
+            candidate=result["candidate"],
             file_url=result["file_url"],
             parse_error=result.get("error"),
         )
@@ -342,7 +380,7 @@ async def upload_resume(
         logger.error(f"Error uploading resume: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to upload resume: {str(e)}",
+            detail=f"Failed to upload resume: {e!s}",
         )
 
 
@@ -354,21 +392,25 @@ async def upload_resume(
 async def batch_upload_resumes(
     files: list[UploadFile] = File(..., description="Resume files (PDFs)"),
     position_id: int | None = Query(None, description="Optionally link to position"),
-    candidate_service: CandidateService = Depends(get_candidate_service),
-    pc_service: PositionCandidateService = Depends(get_position_candidate_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> BatchUploadResponse:
     """Batch upload resumes with fault tolerance.
+
+    Requires authentication and organization membership.
+    All candidates are created within the current user's organization.
 
     Continues processing other files even if some fail.
     If position_id is provided, links all successfully uploaded candidates to the position.
 
     :param files: List of resume files
     :param position_id: Optional position ID to link all candidates
-    :param candidate_service: Injected candidate service
-    :param pc_service: Injected position-candidate service
+    :param current_user: Current authenticated user with organization
     :return: Batch upload results
     """
-    logger.info(f"POST /api/candidates/batch-upload - {len(files)} files, position={position_id}")
+    logger.info(
+        f"POST /api/candidates/batch-upload - user={current_user.user_id}, org={current_user.org_id}, "
+        f"{len(files)} files, position={position_id}"
+    )
 
     # Prepare file list
     file_list: list[tuple[bytes, str]] = []
@@ -395,6 +437,9 @@ async def batch_upload_resumes(
         )
 
     try:
+        candidate_service = get_candidate_service(org_id=current_user.org_id)
+        pc_service = get_position_candidate_service(org_id=current_user.org_id)
+
         # Batch upload
         result = await candidate_service.batch_upload_resumes(
             files=file_list,
@@ -417,7 +462,9 @@ async def batch_upload_resumes(
                             current_status="screening",
                         )
                         linked_count += 1
-                        logger.info(f"Linked candidate {candidate_id} to position {position_id}")
+                        logger.info(
+                            f"Linked candidate {candidate_id} to position {position_id}"
+                        )
                     except Exception as e:
                         logger.warning(
                             f"Failed to link candidate {candidate_id} to position {position_id}: {e}"
@@ -433,7 +480,7 @@ async def batch_upload_resumes(
             BatchUploadResult(
                 file_name=r["file_name"],
                 status=r["status"],
-                candidate=r["candidate"],  # Already a dict, no conversion needed
+                candidate=r["candidate"],
                 error=r.get("error"),
             )
             for r in result["results"]
@@ -454,5 +501,5 @@ async def batch_upload_resumes(
         logger.error(f"Error in batch upload: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to batch upload: {str(e)}",
+            detail=f"Failed to batch upload: {e!s}",
         )

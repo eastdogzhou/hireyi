@@ -64,11 +64,36 @@ class SmartScreeningService:
         # Common technology keywords and patterns
         # In production, this could use NLP or a more sophisticated approach
         common_keywords = [
-            "python", "java", "javascript", "typescript", "react", "vue", "angular",
-            "node", "django", "flask", "fastapi", "spring", "golang", "rust",
-            "postgresql", "mysql", "mongodb", "redis", "elasticsearch",
-            "docker", "kubernetes", "aws", "azure", "gcp",
-            "git", "ci/cd", "devops", "microservices", "restful", "graphql",
+            "python",
+            "java",
+            "javascript",
+            "typescript",
+            "react",
+            "vue",
+            "angular",
+            "node",
+            "django",
+            "flask",
+            "fastapi",
+            "spring",
+            "golang",
+            "rust",
+            "postgresql",
+            "mysql",
+            "mongodb",
+            "redis",
+            "elasticsearch",
+            "docker",
+            "kubernetes",
+            "aws",
+            "azure",
+            "gcp",
+            "git",
+            "ci/cd",
+            "devops",
+            "microservices",
+            "restful",
+            "graphql",
         ]
 
         jd_lower = jd.lower()
@@ -116,18 +141,19 @@ class SmartScreeningService:
 
             # Only consider candidates with at least one match
             if total_matches > 0:
-                scored_candidates.append({
-                    "candidate": candidate,
-                    "match_score": total_matches,
-                })
+                scored_candidates.append(
+                    {
+                        "candidate": candidate,
+                        "match_score": total_matches,
+                    }
+                )
 
         # Sort by match score (descending)
         scored_candidates.sort(key=lambda x: x["match_score"], reverse=True)
 
         # Take top N candidates
         top_candidates = [
-            item["candidate"]
-            for item in scored_candidates[:max_candidates]
+            item["candidate"] for item in scored_candidates[:max_candidates]
         ]
 
         logger.info(
@@ -219,6 +245,7 @@ class SmartScreeningService:
         :return: Screening result summary
         """
         import time
+
         start_time = time.time()
         logger.info(f"Starting smart screening for position: {position_id}")
 
@@ -231,7 +258,9 @@ class SmartScreeningService:
         keywords = self._extract_keywords_from_jd(position.get("jd", ""))
 
         # Get all active candidates
-        all_candidates = self.candidate_service.get_all(limit=1000)  # Get more candidates
+        all_candidates = self.candidate_service.get_all(
+            limit=1000
+        )  # Get more candidates
         logger.info(f"Found {len(all_candidates)} total candidates")
 
         # Phase 1: Pre-screening (keyword matching)
@@ -280,17 +309,19 @@ class SmartScreeningService:
                     candidate, position, model
                 )
 
-                scored_results.append({
-                    "candidate_id": candidate_id,
-                    "candidate_name": candidate.get("name"),
-                    "relevance_score": score_result.get("relevance_score", 2),
-                    "fit_score": score_result.get("fit_score", 2),
-                    "relevance_reason": score_result.get("relevance_reason", ""),
-                    "fit_reason": score_result.get("fit_reason", ""),
-                    "strengths": score_result.get("strengths", []),
-                    "concerns": score_result.get("concerns", []),
-                    "recommendation": score_result.get("recommendation", ""),
-                })
+                scored_results.append(
+                    {
+                        "candidate_id": candidate_id,
+                        "candidate_name": candidate.get("name"),
+                        "relevance_score": score_result.get("relevance_score", 2),
+                        "fit_score": score_result.get("fit_score", 2),
+                        "relevance_reason": score_result.get("relevance_reason", ""),
+                        "fit_reason": score_result.get("fit_reason", ""),
+                        "strengths": score_result.get("strengths", []),
+                        "concerns": score_result.get("concerns", []),
+                        "recommendation": score_result.get("recommendation", ""),
+                    }
+                )
 
             except Exception as e:
                 logger.error(f"Error scoring candidate {candidate_id}: {e}")
@@ -304,8 +335,10 @@ class SmartScreeningService:
 
         # Filter by minimum score (round down the weighted average to 1-4)
         filtered_results = [
-            result for result in scored_results
-            if int((result["relevance_score"] * 0.6 + result["fit_score"] * 0.4) + 0.5) >= min_score
+            result
+            for result in scored_results
+            if int((result["relevance_score"] * 0.6 + result["fit_score"] * 0.4) + 0.5)
+            >= min_score
         ]
 
         logger.info(
@@ -386,9 +419,11 @@ class SmartScreeningService:
             raise ValueError(f"Position {position_id} not found")
 
         # Get all associated candidates
-        associations_result = self.position_candidate_service.get_candidates_for_position(
-            position_id=position_id,
-            limit=1000,  # Get all
+        associations_result = (
+            self.position_candidate_service.get_candidates_for_position(
+                position_id=position_id,
+                limit=1000,  # Get all
+            )
         )
 
         associations = associations_result["associations"]

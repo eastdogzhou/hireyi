@@ -397,7 +397,7 @@ export default function PositionDetail() {
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1 min-w-0">
                             <h3 className="text-lg font-semibold text-gray-900">{candidate.name}</h3>
-                            {candidate.work_experience && candidate.work_experience.length > 0 && (
+                            {candidate.work_experience && Array.isArray(candidate.work_experience) && candidate.work_experience.length > 0 && (
                               <p className="text-gray-600 mt-1">
                                 {candidate.work_experience[0].position} @ {candidate.work_experience[0].company}
                               </p>

@@ -30,13 +30,14 @@ class PositionService(BaseService[dict[str, Any]]):
     - Cascade soft delete
     """
 
-    def __init__(self, supabase: Client):
+    def __init__(self, supabase: Client, org_id: str | None = None):
         """Initialize position service.
 
         :param supabase: Supabase client instance
+        :param org_id: Organization ID for data isolation (optional)
         """
-        super().__init__(supabase, "positions")
-        logger.info("PositionService initialized")
+        super().__init__(supabase, "positions", org_id=org_id)
+        logger.info(f"PositionService initialized{' with org_id=' + org_id if org_id else ''}")
 
     def get_by_status(
         self,
@@ -184,10 +185,12 @@ class PositionService(BaseService[dict[str, Any]]):
 
         # Cascade soft delete to position_candidates
         try:
-            logger.info(f"Cascading soft delete to position_candidates")
-            self.supabase.table("position_candidates").update({
-                "is_deleted": True,
-            }).eq("position_id", record_id).eq("is_deleted", False).execute()
+            logger.info("Cascading soft delete to position_candidates")
+            self.supabase.table("position_candidates").update(
+                {
+                    "is_deleted": True,
+                }
+            ).eq("position_id", record_id).eq("is_deleted", False).execute()
 
             logger.info(f"Position and related records soft deleted: {record_id}")
         except Exception as e:

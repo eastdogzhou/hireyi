@@ -7,7 +7,6 @@ from pydantic import Field, field_validator
 
 from .base import CreateSchema, DatabaseModel, ResponseSchema, UpdateSchema
 
-
 # ============================================================================
 # Enums and Type Definitions
 # ============================================================================
@@ -27,6 +26,7 @@ CandidateStatus = Literal[
 # Database Models
 # ============================================================================
 
+
 class PositionCandidate(DatabaseModel):
     """Position-Candidate relationship database model."""
 
@@ -43,6 +43,7 @@ class PositionCandidate(DatabaseModel):
 # Create Schemas
 # ============================================================================
 
+
 class PositionCandidateCreate(CreateSchema):
     """Schema for creating a position-candidate relationship."""
 
@@ -56,9 +57,7 @@ class PositionCandidateCreate(CreateSchema):
 
     @field_validator("overall_score_numeric", mode="after")
     @classmethod
-    def calculate_or_validate_numeric_score(
-        cls, v: int | None, info
-    ) -> int | None:
+    def calculate_or_validate_numeric_score(cls, v: int | None, info) -> int | None:
         """Auto-calculate overall_score_numeric if scores are provided."""
         if v is not None:
             return v
@@ -79,6 +78,7 @@ class PositionCandidateCreate(CreateSchema):
 # Update Schemas
 # ============================================================================
 
+
 class PositionCandidateUpdate(UpdateSchema):
     """Schema for updating a position-candidate relationship."""
 
@@ -90,9 +90,7 @@ class PositionCandidateUpdate(UpdateSchema):
 
     @field_validator("overall_score_numeric", mode="after")
     @classmethod
-    def calculate_or_validate_numeric_score(
-        cls, v: int | None, info
-    ) -> int | None:
+    def calculate_or_validate_numeric_score(cls, v: int | None, info) -> int | None:
         """Auto-calculate overall_score_numeric if scores are updated."""
         if v is not None:
             return v
@@ -110,6 +108,7 @@ class PositionCandidateUpdate(UpdateSchema):
 # ============================================================================
 # Response Schemas
 # ============================================================================
+
 
 class PositionCandidateResponse(ResponseSchema):
     """Position-candidate relationship response schema."""

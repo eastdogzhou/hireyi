@@ -8,7 +8,12 @@ from pydantic import Field, PlainSerializer, field_validator, model_validator
 from .base import CreateSchema, ResponseSchema, UpdateSchema
 
 # Custom type for date fields that automatically serialize to ISO format strings
-DateStr = Annotated[date, PlainSerializer(lambda x: x.isoformat() if x else None, return_type=str, when_used='always')]
+DateStr = Annotated[
+    date,
+    PlainSerializer(
+        lambda x: x.isoformat() if x else None, return_type=str, when_used="always"
+    ),
+]
 
 
 # ============================================================================
@@ -30,6 +35,7 @@ FeedbackStatus = Literal[
 # Database Models
 # ============================================================================
 
+
 class InterviewFeedback(ResponseSchema):
     """Interview feedback database model (execution record)."""
 
@@ -49,6 +55,7 @@ class InterviewFeedback(ResponseSchema):
 # ============================================================================
 # Create Schemas
 # ============================================================================
+
 
 class InterviewFeedbackCreate(CreateSchema):
     """Schema for creating interview feedback (execution record)."""
@@ -92,6 +99,7 @@ class InterviewFeedbackCreate(CreateSchema):
 # Update Schemas
 # ============================================================================
 
+
 class InterviewFeedbackUpdate(UpdateSchema):
     """Schema for updating interview feedback."""
 
@@ -103,6 +111,7 @@ class InterviewFeedbackUpdate(UpdateSchema):
 # ============================================================================
 # Response Schemas
 # ============================================================================
+
 
 class InterviewFeedbackResponse(ResponseSchema):
     """Interview feedback response schema."""
@@ -142,6 +151,7 @@ class InterviewFeedbackWithDetails(ResponseSchema):
 # ============================================================================
 # Status Change Specific Schema
 # ============================================================================
+
 
 class StatusChangeCreate(CreateSchema):
     """Schema for creating a status change record."""

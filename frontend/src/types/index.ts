@@ -10,12 +10,17 @@ export type {
   PositionCandidate,
   InterviewFeedback,
   User,
+  Organization,
+  OrganizationWithRole,
+  OrganizationMember,
   WorkExperience,
   EducationBackground,
   JobRequirement,
   CandidateStatus,
   CandidateScore,
   InterviewRound,
+  MemberStatus,
+  MemberRole,
 } from './models'
 
 // Export all API types
@@ -37,4 +42,8 @@ export type {
   SmartScreeningRequest,
   BatchUploadResumeRequest,
   BatchUploadResult,
+  CreateOrganizationRequest,
+  JoinOrganizationRequest,
+  ApprovalRequest,
+  RoleUpdateRequest,
 } from './api'

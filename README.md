@@ -81,6 +81,8 @@ hireyi/
 - Supabase account
 - LLM API key (OpenAI, DeepSeek, etc.)
 
+> ⚠️ **MVP Configuration Notice**: For development convenience, Email Verification and Row Level Security (RLS) are **DISABLED** in Supabase. These MUST be re-enabled before production deployment. See [CLAUDE.md - MVP Development Configuration](CLAUDE.md#️-mvp-development-configuration-temporary) for details.
+
 ### Backend Setup
 
 ```bash
