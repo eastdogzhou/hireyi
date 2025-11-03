@@ -188,7 +188,7 @@ export interface UpdatePositionRequest {
  * 创建面试反馈请求
  */
 export interface CreateInterviewFeedbackRequest {
-  position_id: number
+  position_id?: number  // Optional: allows candidate-level records
   candidate_id: number
   interviewer: number
   rating: number
@@ -240,4 +240,39 @@ export interface BatchUploadResult {
     candidate?: Candidate
     error?: string
   }>
+}
+
+/**
+ * Create Organization Request
+ * 创建组织请求
+ */
+export interface CreateOrganizationRequest {
+  name: string
+  description?: string
+}
+
+/**
+ * Join Organization Request
+ * 加入组织请求
+ */
+export interface JoinOrganizationRequest {
+  org_code: string
+}
+
+/**
+ * Approval Request
+ * 审批请求
+ */
+export interface ApprovalRequest {
+  member_id: number
+  action: 'approve' | 'reject'
+}
+
+/**
+ * Role Update Request
+ * 角色更新请求
+ */
+export interface RoleUpdateRequest {
+  member_id: number
+  new_role: 'owner' | 'admin' | 'member'
 }

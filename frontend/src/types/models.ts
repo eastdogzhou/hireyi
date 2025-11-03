@@ -187,3 +187,54 @@ export interface User {
   created_at: string
   updated_at: string
 }
+
+/**
+ * Member Role
+ * 成员角色 - 匹配后端 role-based 系统
+ */
+export type MemberRole = 'creator' | 'admin' | 'interviewer' | 'pending'
+
+/**
+ * Organization Interface
+ * 组织信息
+ */
+export interface Organization {
+  id: string
+  name: string
+  org_code: string
+  description?: string | null
+  created_by: string
+  created_at: string
+  updated_at: string
+
+  // Populated fields
+  role?: MemberRole
+}
+
+/**
+ * Organization With Role Interface
+ * 组织信息（包含用户角色）
+ */
+export interface OrganizationWithRole {
+  id: string
+  name: string
+  org_code: string
+  my_role: MemberRole
+  created_at: string
+}
+
+/**
+ * Organization Member Interface
+ * 组织成员信息（匹配后端 OrganizationMemberInfo）
+ */
+export interface OrganizationMember {
+  id: number
+  org_id: string
+  user_id: string
+  user_name: string
+  user_email: string
+  role: MemberRole
+  requested_at: string  // When member requested to join
+  approved_at?: string | null  // When member was approved
+  approved_by?: string | null  // UUID of user who approved
+}

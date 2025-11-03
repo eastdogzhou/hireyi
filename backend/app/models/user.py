@@ -7,7 +7,6 @@ from pydantic import EmailStr, Field
 
 from .base import CreateSchema, DatabaseModel, ResponseSchema, UpdateSchema
 
-
 # ============================================================================
 # Enums and Type Definitions
 # ============================================================================
@@ -18,6 +17,7 @@ UserRole = Literal["recruiter", "admin"]
 # ============================================================================
 # Database Models
 # ============================================================================
+
 
 class User(DatabaseModel):
     """User database model."""
@@ -31,6 +31,7 @@ class User(DatabaseModel):
 # Create Schemas
 # ============================================================================
 
+
 class UserCreate(CreateSchema):
     """Schema for creating a new user."""
 
@@ -43,6 +44,7 @@ class UserCreate(CreateSchema):
 # Update Schemas
 # ============================================================================
 
+
 class UserUpdate(UpdateSchema):
     """Schema for updating a user."""
 
@@ -54,6 +56,7 @@ class UserUpdate(UpdateSchema):
 # ============================================================================
 # Response Schemas
 # ============================================================================
+
 
 class UserResponse(ResponseSchema):
     """User response schema."""

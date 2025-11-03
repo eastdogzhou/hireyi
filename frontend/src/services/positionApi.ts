@@ -3,6 +3,7 @@
  * 职位 API 服务层
  */
 
+import { apiClient } from './auth.service'
 import type {
   Position,
   PositionListParams,
@@ -33,10 +34,8 @@ export async function getPositions(
   if (params.created_after) searchParams.append('created_after', params.created_after)
   if (params.created_before) searchParams.append('created_before', params.created_before)
 
-  const response = await fetch(`${API_BASE}/api/positions/?${searchParams}`)
-  if (!response.ok) throw new Error('Failed to fetch positions')
-
-  const data = await response.json()
+  const response = await apiClient.get(`/api/positions/?${searchParams}`)
+  const data = response.data
 
   return {
     data: data.positions,
@@ -52,12 +51,8 @@ export async function getPositions(
  * 根据 ID 获取职位详情
  */
 export async function getPosition(id: number): Promise<Position> {
-  const response = await fetch(`${API_BASE}/api/positions/${id}`)
-  if (!response.ok) {
-    if (response.status === 404) throw new Error('Position not found')
-    throw new Error('Failed to fetch position')
-  }
-  return response.json()
+  const response = await apiClient.get(`/api/positions/${id}`)
+  return response.data
 }
 
 /**
@@ -65,13 +60,8 @@ export async function getPosition(id: number): Promise<Position> {
  * 创建职位
  */
 export async function createPosition(data: CreatePositionRequest): Promise<Position> {
-  const response = await fetch(`${API_BASE}/api/positions/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) throw new Error('Failed to create position')
-  return response.json()
+  const response = await apiClient.post(`/api/positions/`, data)
+  return response.data
 }
 
 /**
@@ -82,16 +72,8 @@ export async function updatePosition(
   id: number,
   data: UpdatePositionRequest
 ): Promise<Position> {
-  const response = await fetch(`${API_BASE}/api/positions/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) {
-    if (response.status === 404) throw new Error('Position not found')
-    throw new Error('Failed to update position')
-  }
-  return response.json()
+  const response = await apiClient.patch(`/api/positions/${id}`, data)
+  return response.data
 }
 
 /**
@@ -102,17 +84,8 @@ export async function updatePositionStatus(
   id: number,
   status: 'open' | 'closed'
 ): Promise<Position> {
-  const response = await fetch(`${API_BASE}/api/positions/${id}/status`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status }),
-  })
-  if (!response.ok) {
-    if (response.status === 404) throw new Error('Position not found')
-    if (response.status === 400) throw new Error('Invalid status value')
-    throw new Error('Failed to update position status')
-  }
-  return response.json()
+  const response = await apiClient.patch(`/api/positions/${id}/status`, { status })
+  return response.data
 }
 
 /**
@@ -120,13 +93,7 @@ export async function updatePositionStatus(
  * 删除职位（软删除）
  */
 export async function deletePosition(id: number): Promise<void> {
-  const response = await fetch(`${API_BASE}/api/positions/${id}`, {
-    method: 'DELETE',
-  })
-  if (!response.ok) {
-    if (response.status === 404) throw new Error('Position not found')
-    throw new Error('Failed to delete position')
-  }
+  await apiClient.delete(`/api/positions/${id}`)
 }
 
 /**
@@ -146,10 +113,8 @@ export async function getPositionCandidates(
   if (params.sort_by) searchParams.append('sort_by', params.sort_by)
   if (params.sort_order) searchParams.append('sort_order', params.sort_order)
 
-  const response = await fetch(`${API_BASE}/api/positions/${positionId}/candidates?${searchParams}`)
-  if (!response.ok) throw new Error('Failed to fetch position candidates')
-
-  const data = await response.json()
+  const response = await apiClient.get(`/api/positions/${positionId}/candidates?${searchParams}`)
+  const data = response.data
 
   return {
     data: data.candidates,
@@ -172,15 +137,11 @@ export async function smartScreening(
   if (request.limit) searchParams.append('max_candidates', String(request.limit))
   if (request.min_score) searchParams.append('min_score', String(request.min_score))
 
-  const response = await fetch(
-    `${API_BASE}/api/positions/${positionId}/smart-screening?${searchParams}`,
-    {
-      method: 'POST',
-    }
+  const response = await apiClient.post(
+    `/api/positions/${positionId}/smart-screening?${searchParams}`
   )
 
-  if (!response.ok) throw new Error('Failed to run smart screening')
-  return response.json()
+  return response.data
 }
 
 /**
@@ -190,10 +151,6 @@ export async function smartScreening(
 export async function recalculateScores(
   positionId: number
 ): Promise<{ status: string; position_id: number; scores_updated: number; message: string }> {
-  const response = await fetch(`${API_BASE}/api/positions/${positionId}/recalculate-scores`, {
-    method: 'POST',
-  })
-
-  if (!response.ok) throw new Error('Failed to recalculate scores')
-  return response.json()
+  const response = await apiClient.post(`/api/positions/${positionId}/recalculate-scores`)
+  return response.data
 }

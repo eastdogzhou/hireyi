@@ -152,7 +152,7 @@ def test_search_candidates_by_name(candidate_service, mock_supabase):
     ) = mock_response
 
     # Execute
-        result = candidate_service.search_candidates(name_query="张")
+    result = candidate_service.search_candidates(name_query="张")
 
     # Verify
     assert len(result["candidates"]) == 2

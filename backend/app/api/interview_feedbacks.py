@@ -1,4 +1,4 @@
-"""Interview feedback API routes."""
+"""Interview feedback API routes with authentication."""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict
 
 from app.api.dependencies import get_interview_feedback_service
+from app.middleware.auth import require_organization
+from app.models.auth import CurrentUser
 from app.models.interview_feedback import (
     InterviewFeedbackCreate,
     InterviewFeedbackResponse,
@@ -44,10 +46,12 @@ class FeedbackListResponse(BaseModel):
 # ============================================================================
 
 
-@router.post("/", response_model=InterviewFeedbackResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=InterviewFeedbackResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_interview_feedback(
     feedback_data: InterviewFeedbackCreate,
-    feedback_service: InterviewFeedbackService = Depends(get_interview_feedback_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> InterviewFeedbackResponse:
     """Create a new interview feedback record.
 
@@ -68,6 +72,9 @@ async def create_interview_feedback(
     )
 
     try:
+
+
+        feedback_service = get_interview_feedback_service(org_id=current_user.org_id)
         feedback = await run_in_threadpool(
             feedback_service.create,
             feedback_data.model_dump(),
@@ -85,14 +92,18 @@ async def create_interview_feedback(
         logger.error(f"Error creating interview feedback: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create interview feedback: {str(e)}",
+            detail=f"Failed to create interview feedback: {e!s}",
         )
 
 
-@router.post("/status-change", response_model=InterviewFeedbackResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/status-change",
+    response_model=InterviewFeedbackResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_status_change(
     status_change_data: StatusChangeCreate,
-    feedback_service: InterviewFeedbackService = Depends(get_interview_feedback_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> InterviewFeedbackResponse:
     """Create a status change record.
 
@@ -109,6 +120,9 @@ async def create_status_change(
     )
 
     try:
+
+
+        feedback_service = get_interview_feedback_service(org_id=current_user.org_id)
         # Convert to InterviewFeedbackCreate
         feedback_data = status_change_data.to_feedback_create()
 
@@ -129,18 +143,20 @@ async def create_status_change(
         logger.error(f"Error creating status change: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create status change: {str(e)}",
+            detail=f"Failed to create status change: {e!s}",
         )
 
 
 @router.get("/candidate/{candidate_id}", response_model=FeedbackListResponse)
 async def get_candidate_execution_records(
     candidate_id: int,
-    include_status_changes: bool = Query(True, description="Include status change records"),
+    current_user: CurrentUser = Depends(require_organization),
+    include_status_changes: bool = Query(
+        True, description="Include status change records"
+    ),
     limit: int = Query(100, ge=1, le=200, description="Results per page"),
     offset: int = Query(0, ge=0, description="Page offset"),
-    feedback_service: InterviewFeedbackService = Depends(get_interview_feedback_service),
-) -> FeedbackListResponse:
+    ) -> FeedbackListResponse:
     """Get all execution records for a candidate (across all positions).
 
     Returns both interview feedbacks and status changes (chronological order, newest first).
@@ -159,6 +175,9 @@ async def get_candidate_execution_records(
     )
 
     try:
+
+
+        feedback_service = get_interview_feedback_service(org_id=current_user.org_id)
         result = await run_in_threadpool(
             feedback_service.get_feedbacks_for_candidate,
             candidate_id,
@@ -173,7 +192,7 @@ async def get_candidate_execution_records(
         logger.error(f"Error getting execution records: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get execution records: {str(e)}",
+            detail=f"Failed to get execution records: {e!s}",
         )
 
 
@@ -181,11 +200,13 @@ async def get_candidate_execution_records(
 async def get_feedbacks(
     candidate_id: int = Query(..., description="Candidate ID"),
     position_id: int = Query(..., description="Position ID"),
-    include_status_changes: bool = Query(True, description="Include status change records"),
+    current_user: CurrentUser = Depends(require_organization),
+    include_status_changes: bool = Query(
+        True, description="Include status change records"
+    ),
     limit: int = Query(100, ge=1, le=200, description="Results per page"),
     offset: int = Query(0, ge=0, description="Page offset"),
-    feedback_service: InterviewFeedbackService = Depends(get_interview_feedback_service),
-) -> FeedbackListResponse:
+    ) -> FeedbackListResponse:
     """Get all feedback records for a candidate-position pair.
 
     Returns both interview feedbacks and status changes (chronological order).
@@ -205,6 +226,9 @@ async def get_feedbacks(
     )
 
     try:
+
+
+        feedback_service = get_interview_feedback_service(org_id=current_user.org_id)
         result = await run_in_threadpool(
             feedback_service.get_feedbacks_for_candidate_position,
             candidate_id,
@@ -220,17 +244,17 @@ async def get_feedbacks(
         logger.error(f"Error getting feedbacks: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get feedbacks: {str(e)}",
+            detail=f"Failed to get feedbacks: {e!s}",
         )
 
 
 @router.get("/interviewer/{interviewer_id}", response_model=list[dict[str, Any]])
 async def get_feedbacks_by_interviewer(
     interviewer_id: int,
+    current_user: CurrentUser = Depends(require_organization),
     limit: int = Query(100, ge=1, le=200, description="Results per page"),
     offset: int = Query(0, ge=0, description="Page offset"),
-    feedback_service: InterviewFeedbackService = Depends(get_interview_feedback_service),
-) -> list[dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
     """Get all feedbacks created by a specific interviewer.
 
     :param interviewer_id: Interviewer user ID
@@ -242,6 +266,9 @@ async def get_feedbacks_by_interviewer(
     logger.info(f"GET /api/interview-feedbacks/interviewer/{interviewer_id}")
 
     try:
+
+
+        feedback_service = get_interview_feedback_service(org_id=current_user.org_id)
         feedbacks = await run_in_threadpool(
             feedback_service.get_feedbacks_by_interviewer,
             interviewer_id,
@@ -255,14 +282,14 @@ async def get_feedbacks_by_interviewer(
         logger.error(f"Error getting feedbacks by interviewer: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get feedbacks: {str(e)}",
+            detail=f"Failed to get feedbacks: {e!s}",
         )
 
 
 @router.get("/{feedback_id}", response_model=InterviewFeedbackResponse)
 async def get_feedback(
     feedback_id: int,
-    feedback_service: InterviewFeedbackService = Depends(get_interview_feedback_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> InterviewFeedbackResponse:
     """Get feedback details by ID.
 
@@ -273,6 +300,7 @@ async def get_feedback(
     """
     logger.info(f"GET /api/interview-feedbacks/{feedback_id}")
 
+    feedback_service = get_interview_feedback_service(org_id=current_user.org_id)
     feedback = await run_in_threadpool(feedback_service.get_by_id, feedback_id)
 
     if not feedback:
@@ -288,7 +316,7 @@ async def get_feedback(
 async def update_feedback(
     feedback_id: int,
     feedback_data: InterviewFeedbackUpdate,
-    feedback_service: InterviewFeedbackService = Depends(get_interview_feedback_service),
+    current_user: CurrentUser = Depends(require_organization),
 ) -> InterviewFeedbackResponse:
     """Update interview feedback.
 
@@ -302,6 +330,8 @@ async def update_feedback(
     :raises HTTPException: If feedback not found or is a status change record
     """
     logger.info(f"PATCH /api/interview-feedbacks/{feedback_id}")
+
+    feedback_service = get_interview_feedback_service(org_id=current_user.org_id)
 
     # Check if feedback exists
     if not await run_in_threadpool(feedback_service.exists, feedback_id):
@@ -333,5 +363,5 @@ async def update_feedback(
         logger.error(f"Error updating feedback: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update feedback: {str(e)}",
+            detail=f"Failed to update feedback: {e!s}",
         )

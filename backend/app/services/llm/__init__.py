@@ -4,6 +4,6 @@ This module provides a unified interface for interacting with various LLM provid
 through LiteLLM, supporting both synchronous and streaming completions.
 """
 
-from .client import TextResponse, text_complete, stream_text_complete
+from .client import TextResponse, stream_text_complete, text_complete
 
-__all__ = ["TextResponse", "text_complete", "stream_text_complete"]
+__all__ = ["TextResponse", "stream_text_complete", "text_complete"]

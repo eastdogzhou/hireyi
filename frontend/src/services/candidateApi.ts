@@ -3,6 +3,7 @@
  * 候选人 API 服务层
  */
 
+import { apiClient } from './auth.service'
 import type {
   Candidate,
   CandidateListParams,
@@ -31,10 +32,8 @@ export async function getCandidates(
   if (params.created_after) searchParams.append('created_after', params.created_after)
   if (params.created_before) searchParams.append('created_before', params.created_before)
 
-  const response = await fetch(`${API_BASE}/api/candidates/?${searchParams}`)
-  if (!response.ok) throw new Error('Failed to fetch candidates')
-
-  const data = await response.json()
+  const response = await apiClient.get(`/api/candidates/?${searchParams}`)
+  const data = response.data
 
   // Backend returns {candidates, total, limit, offset}
   // Transform to {data, total, page, page_size, total_pages}
@@ -52,12 +51,8 @@ export async function getCandidates(
  * 根据 ID 获取候选人详情
  */
 export async function getCandidate(id: number): Promise<Candidate> {
-  const response = await fetch(`${API_BASE}/api/candidates/${id}`)
-  if (!response.ok) {
-    if (response.status === 404) throw new Error('Candidate not found')
-    throw new Error('Failed to fetch candidate')
-  }
-  return response.json()
+  const response = await apiClient.get(`/api/candidates/${id}`)
+  return response.data
 }
 
 /**
@@ -65,13 +60,8 @@ export async function getCandidate(id: number): Promise<Candidate> {
  * 手动创建候选人
  */
 export async function createCandidate(data: CreateCandidateRequest): Promise<Candidate> {
-  const response = await fetch(`${API_BASE}/api/candidates/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) throw new Error('Failed to create candidate')
-  return response.json()
+  const response = await apiClient.post(`/api/candidates/`, data)
+  return response.data
 }
 
 /**
@@ -82,16 +72,8 @@ export async function updateCandidate(
   id: number,
   data: UpdateCandidateRequest
 ): Promise<Candidate> {
-  const response = await fetch(`${API_BASE}/api/candidates/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) {
-    if (response.status === 404) throw new Error('Candidate not found')
-    throw new Error('Failed to update candidate')
-  }
-  return response.json()
+  const response = await apiClient.patch(`/api/candidates/${id}`, data)
+  return response.data
 }
 
 /**
@@ -99,13 +81,7 @@ export async function updateCandidate(
  * 删除候选人（软删除）
  */
 export async function deleteCandidate(id: number): Promise<void> {
-  const response = await fetch(`${API_BASE}/api/candidates/${id}`, {
-    method: 'DELETE',
-  })
-  if (!response.ok) {
-    if (response.status === 404) throw new Error('Candidate not found')
-    throw new Error('Failed to delete candidate')
-  }
+  await apiClient.delete(`/api/candidates/${id}`)
 }
 
 /**
@@ -120,20 +96,16 @@ export async function uploadResume(
   formData.append('file', file)
 
   const url = positionId
-    ? `${API_BASE}/api/candidates/upload?position_id=${positionId}`
-    : `${API_BASE}/api/candidates/upload`
+    ? `/api/candidates/upload?position_id=${positionId}`
+    : `/api/candidates/upload`
 
-  const response = await fetch(url, {
-    method: 'POST',
-    body: formData,
+  const response = await apiClient.post(url, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
   })
 
-  if (!response.ok) {
-    if (response.status === 400) throw new Error('Invalid file type or missing filename')
-    throw new Error('Failed to upload resume')
-  }
-
-  return response.json()
+  return response.data
 }
 
 /**
@@ -148,18 +120,14 @@ export async function batchUploadResumes(
   files.forEach(file => formData.append('files', file))
 
   const url = positionId
-    ? `${API_BASE}/api/candidates/batch-upload?position_id=${positionId}`
-    : `${API_BASE}/api/candidates/batch-upload`
+    ? `/api/candidates/batch-upload?position_id=${positionId}`
+    : `/api/candidates/batch-upload`
 
-  const response = await fetch(url, {
-    method: 'POST',
-    body: formData,
+  const response = await apiClient.post(url, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
   })
 
-  if (!response.ok) {
-    if (response.status === 400) throw new Error('No valid PDF files provided')
-    throw new Error('Failed to batch upload resumes')
-  }
-
-  return response.json()
+  return response.data
 }

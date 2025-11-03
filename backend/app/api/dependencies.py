@@ -56,55 +56,60 @@ def get_user_service() -> UserService:
     return UserService(supabase)
 
 
-def get_candidate_service() -> CandidateService:
+def get_candidate_service(org_id: str | None = None) -> CandidateService:
     """Get candidate service instance.
 
+    :param org_id: Organization ID for data isolation (optional).
     :return: Candidate service instance
     """
     supabase = get_supabase_client()
     oss_service = get_oss_service()
     resume_parser = get_resume_parser()
 
-    return CandidateService(supabase, oss_service, resume_parser)
+    return CandidateService(supabase, oss_service, resume_parser, org_id=org_id)
 
 
-def get_position_service() -> PositionService:
+def get_position_service(org_id: str | None = None) -> PositionService:
     """Get position service instance.
 
+    :param org_id: Organization ID for data isolation (optional).
     :return: Position service instance
     """
     supabase = get_supabase_client()
-    return PositionService(supabase)
+    return PositionService(supabase, org_id=org_id)
 
 
-def get_position_candidate_service() -> PositionCandidateService:
+def get_position_candidate_service(org_id: str | None = None) -> PositionCandidateService:
     """Get position-candidate service instance.
 
+    :param org_id: Organization ID for data isolation (optional).
     :return: Position-candidate service instance
     """
     supabase = get_supabase_client()
-    return PositionCandidateService(supabase)
+    return PositionCandidateService(supabase, org_id=org_id)
 
 
-def get_interview_feedback_service() -> InterviewFeedbackService:
+def get_interview_feedback_service(org_id: str | None = None) -> InterviewFeedbackService:
     """Get interview feedback service instance.
 
+    :param org_id: Organization ID for data isolation (optional).
     :return: Interview feedback service instance
     """
     supabase = get_supabase_client()
-    return InterviewFeedbackService(supabase)
+    return InterviewFeedbackService(supabase, org_id=org_id)
 
 
-def get_smart_screening_service() -> SmartScreeningService:
+def get_smart_screening_service(org_id: str | None = None) -> SmartScreeningService:
     """Get smart screening service instance.
 
+    :param org_id: Organization ID for data isolation (optional).
     :return: Smart screening service instance
     """
     supabase = get_supabase_client()
 
-    candidate_service = get_candidate_service()
-    position_service = get_position_service()
-    position_candidate_service = get_position_candidate_service()
+    candidate_service = get_candidate_service(org_id=org_id)
+    position_service = get_position_service(org_id=org_id)
+    position_candidate_service = get_position_candidate_service(org_id=org_id)
 
     return SmartScreeningService(
         supabase,

@@ -145,10 +145,10 @@ export async function createInterviewFeedback(
  */
 export async function createStatusChange(data: {
   candidate_id: number
-  position_id: number
+  position_id?: number  // Optional: allows candidate-level status changes
   interviewer: number
   new_status: string
-  reason: string
+  comments: string  // Changed from 'reason' to match backend API
 }): Promise<InterviewFeedback> {
   const response = await fetch(`${API_BASE}/api/interview-feedbacks/status-change`, {
     method: 'POST',

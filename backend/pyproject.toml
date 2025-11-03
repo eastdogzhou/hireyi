@@ -16,6 +16,8 @@ dependencies = [
     # Database & Storage
     "supabase>=2.9.0",
     "sqlalchemy>=2.0.0",
+    # Authentication
+    "pyjwt>=2.9.0",
     # AI & LLM
     "litellm>=1.50.0",
     "openai>=1.50.0", # For OpenAI-compatible models
@@ -202,3 +204,9 @@ exclude_lines = [
 # ==================== Hatch Configuration ====================
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
+
+[dependency-groups]
+dev = [
+    "psycopg2-binary>=2.9.11",
+    "python-dotenv>=1.1.1",
+]

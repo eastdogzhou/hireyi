@@ -32,15 +32,6 @@ export interface InterviewTimelineProps {
   className?: string
 }
 
-// Round labels
-const roundLabels: Record<string, string> = {
-  phone: '📞 电话面试',
-  technical: '💻 技术面试',
-  manager: '👔 主管面试',
-  hr: '🤝 HR面试',
-  final: '🎯 终面',
-}
-
 // Rating labels
 const ratingLabels: Record<number, { label: string; color: string }> = {
   1: { label: '不推荐', color: 'text-red-600' },
@@ -83,7 +74,7 @@ export const InterviewTimeline: React.FC<InterviewTimelineProps> = ({
       {/* Timeline Items */}
       <div className="space-y-6">
         {sortedFeedbacks.map((feedback) => {
-          const ratingInfo = ratingLabels[feedback.rating] || ratingLabels[2]
+          const ratingInfo = feedback.rating ? ratingLabels[feedback.rating] || ratingLabels[2] : ratingLabels[2]
 
           return (
             <div
@@ -111,16 +102,18 @@ export const InterviewTimeline: React.FC<InterviewTimelineProps> = ({
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="default" size="md">
-                        {roundLabels[feedback.round] || feedback.round}
+                        {feedback.interview_date ? `面试日期: ${feedback.interview_date}` : '面试评价'}
                       </Badge>
-                      <div className="flex items-center gap-1">
-                        {[...Array(feedback.rating)].map((_, i) => (
-                          <Star key={i} className="w-4 h-4 text-orange-500 fill-current" />
-                        ))}
-                        <span className={cn('ml-1 text-sm font-medium', ratingInfo.color)}>
-                          {ratingInfo.label}
-                        </span>
-                      </div>
+                      {feedback.rating && (
+                        <div className="flex items-center gap-1">
+                          {[...Array(feedback.rating)].map((_, i) => (
+                            <Star key={i} className="w-4 h-4 text-orange-500 fill-current" />
+                          ))}
+                          <span className={cn('ml-1 text-sm font-medium', ratingInfo.color)}>
+                            {ratingInfo.label}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Date */}

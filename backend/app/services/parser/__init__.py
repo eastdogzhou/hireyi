@@ -12,8 +12,8 @@ from .resume_parser import (
 )
 
 __all__ = [
-    "ResumeParser",
     "ResumeParseError",
-    "parse_resume_function",
+    "ResumeParser",
     "parse_resume_batch",
+    "parse_resume_function",
 ]

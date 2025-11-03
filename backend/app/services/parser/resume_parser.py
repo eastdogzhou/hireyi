@@ -15,9 +15,9 @@ from typing import Any
 from ..llm.client import text_complete
 from ..llm.prompts import RESUME_PARSING_PROMPT
 from .pymupdf_parser import (
+    PyMuPDFParseError,
     extract_text_from_pymupdf_output,
     parse_pdf_with_pymupdf,
-    PyMuPDFParseError,
 )
 
 logger = logging.getLogger(__name__)
@@ -249,9 +249,7 @@ async def parse_resume_batch(
     # Filter out failed parses (None values)
     results = [r for r in completed_results if r is not None]
 
-    logger.info(
-        f"Batch parsing complete: {len(results)}/{len(file_paths)} successful"
-    )
+    logger.info(f"Batch parsing complete: {len(results)}/{len(file_paths)} successful")
 
     return results
 

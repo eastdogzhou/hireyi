@@ -127,6 +127,11 @@ export interface TableProps<T = any> {
    * Custom empty state component
    */
   emptyComponent?: React.ReactNode;
+
+  /**
+   * Allow overflow visible (useful for dropdowns inside table)
+   */
+  overflowVisible?: boolean;
 }
 
 /**
@@ -161,6 +166,7 @@ export function Table<T = any>({
   size = 'md',
   className,
   emptyComponent,
+  overflowVisible = false,
 }: TableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
@@ -233,7 +239,7 @@ export function Table<T = any>({
   }
 
   return (
-    <div className={cn('w-full overflow-x-auto rounded-lg border border-gray-200', className)}>
+    <div className={cn('w-full rounded-lg border border-gray-200', !overflowVisible && 'overflow-x-auto', className)}>
       <table className={cn('w-full border-collapse', sizeConfig[size])}>
         {/* Header */}
         <thead className="bg-gray-50 border-b border-gray-200">

@@ -8,17 +8,19 @@ from pydantic import EmailStr, Field, field_validator
 
 from .base import CreateSchema, DatabaseModel, ResponseSchema, UpdateSchema
 
-
 # ============================================================================
 # Enums and Type Definitions
 # ============================================================================
 
-CandidateScore = Literal[1, 2, 3, 4]
+# Candidate global score (0-10 scale) - based on resume quality
+# Independent from position matching scores (1-4 scale)
+CandidateScore = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 
 # ============================================================================
 # Database Models
 # ============================================================================
+
 
 class Candidate(DatabaseModel):
     """Candidate database model."""
@@ -44,6 +46,7 @@ class Candidate(DatabaseModel):
 # ============================================================================
 # Create Schemas
 # ============================================================================
+
 
 class CandidateCreate(CreateSchema):
     """Schema for creating a new candidate."""
@@ -84,13 +87,13 @@ class CandidateCreate(CreateSchema):
             return None
 
         # Remove all non-digit characters
-        cleaned = re.sub(r'\D', '', v.strip())
+        cleaned = re.sub(r"\D", "", v.strip())
 
         if not cleaned:
             return None
 
         # Validate Chinese mobile number format: 11 digits starting with 1
-        if not re.match(r'^1\d{10}$', cleaned):
+        if not re.match(r"^1\d{10}$", cleaned):
             # If doesn't match Chinese mobile format, still accept (for international numbers)
             # But must have at least 7 digits
             if len(cleaned) < 7:
@@ -110,6 +113,7 @@ class CandidateCreate(CreateSchema):
 # ============================================================================
 # Update Schemas
 # ============================================================================
+
 
 class CandidateUpdate(UpdateSchema):
     """Schema for updating a candidate."""
@@ -151,13 +155,13 @@ class CandidateUpdate(UpdateSchema):
             return None
 
         # Remove all non-digit characters
-        cleaned = re.sub(r'\D', '', v.strip())
+        cleaned = re.sub(r"\D", "", v.strip())
 
         if not cleaned:
             return None
 
         # Validate Chinese mobile number format: 11 digits starting with 1
-        if not re.match(r'^1\d{10}$', cleaned):
+        if not re.match(r"^1\d{10}$", cleaned):
             # If doesn't match Chinese mobile format, still accept (for international numbers)
             # But must have at least 7 digits
             if len(cleaned) < 7:
@@ -177,6 +181,7 @@ class CandidateUpdate(UpdateSchema):
 # ============================================================================
 # Response Schemas
 # ============================================================================
+
 
 class CandidateResponse(ResponseSchema):
     """Candidate response schema."""

@@ -26,13 +26,14 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
     - Timeline view support
     """
 
-    def __init__(self, supabase: Client):
+    def __init__(self, supabase: Client, org_id: str | None = None):
         """Initialize interview feedback service.
 
         :param supabase: Supabase client instance
+        :param org_id: Organization ID for data isolation (optional)
         """
-        super().__init__(supabase, "interview_feedbacks")
-        logger.info("InterviewFeedbackService initialized")
+        super().__init__(supabase, "interview_feedbacks", org_id=org_id)
+        logger.info(f"InterviewFeedbackService initialized{' with org_id=' + org_id if org_id else ''}")
 
     def create_interview_feedback(
         self,
@@ -101,9 +102,18 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
         )
 
         # Validate status
-        valid_statuses = ["screening", "interview", "offer", "hired", "rejected", "withdrawn"]
+        valid_statuses = [
+            "screening",
+            "interview",
+            "offer",
+            "hired",
+            "rejected",
+            "withdrawn",
+        ]
         if new_status not in valid_statuses:
-            raise ValueError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+            raise ValueError(
+                f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            )
 
         # Prepare data
         data = {
@@ -149,7 +159,9 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
             "smart_screening": f"智能筛选自动匹配到职位 (职位ID: {position_id})",
             "ai": f"AI 自动推荐到职位 (职位ID: {position_id})",
         }
-        comments = source_descriptions.get(source, f"关联到职位 (职位ID: {position_id})")
+        comments = source_descriptions.get(
+            source, f"关联到职位 (职位ID: {position_id})"
+        )
 
         # Prepare data
         data = {
@@ -164,7 +176,9 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
         }
 
         record = self.create(data)
-        logger.info(f"Position association record created successfully: {record.get('id')}")
+        logger.info(
+            f"Position association record created successfully: {record.get('id')}"
+        )
         return record
 
     def update_feedback(
@@ -233,15 +247,10 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
         :param offset: Number of records to skip
         :return: Dictionary with feedbacks list, total count, limit, and offset
         """
-        logger.debug(
-            f"Getting all execution records for candidate={candidate_id}"
-        )
+        logger.debug(f"Getting all execution records for candidate={candidate_id}")
 
         # Start with base query - only filter by candidate_id
-        query = (
-            self._get_active_query(count="exact")
-            .eq("candidate_id", candidate_id)
-        )
+        query = self._get_active_query(count="exact").eq("candidate_id", candidate_id)
 
         # Filter by type if requested
         if not include_status_changes:
@@ -406,7 +415,9 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
             .execute()
         )
 
-        logger.debug(f"Found {len(response.data)} feedbacks by interviewer {interviewer}")
+        logger.debug(
+            f"Found {len(response.data)} feedbacks by interviewer {interviewer}"
+        )
         return response.data
 
     def count_feedbacks_for_candidate_position(

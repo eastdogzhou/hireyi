@@ -25,7 +25,7 @@ def test_root_endpoint(test_client: TestClient):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["message"] == "AI Resume Scanning System API"
+    assert data["message"] == "hireyi API"
     assert data["docs"] == "/docs"
 
 
@@ -73,8 +73,16 @@ def test_get_candidate_not_found(test_client: TestClient):
 
 def test_create_candidate_success(test_client: TestClient, sample_candidate_data, monkeypatch):
     """Test creating a candidate successfully."""
+    from datetime import datetime, timezone
+
     # Mock service to return created candidate
-    created_candidate = {**sample_candidate_data, "id": 1, "is_deleted": False}
+    created_candidate = {
+        **sample_candidate_data,
+        "id": 1,
+        "is_deleted": False,
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
+    }
 
     def mock_create(self, data):
         return created_candidate
@@ -106,6 +114,8 @@ def test_create_candidate_validation_error(test_client: TestClient):
 
 def test_update_candidate_success(test_client: TestClient, monkeypatch):
     """Test updating a candidate successfully."""
+    from datetime import datetime, timezone
+
     candidate_id = 1
     update_data = {"name": "新名字", "skills": ["Python", "Django", "React"]}
 
@@ -120,7 +130,21 @@ def test_update_candidate_success(test_client: TestClient, monkeypatch):
             "name": data["name"],
             "skills": data["skills"],
             "email": "test@example.com",
+            "phone": "13800138000",
+            "highlights": "测试亮点",
+            "years_of_experience": 5,
+            "education_level": "本科",
+            "recent_company": "测试公司",
+            "recent_position": "工程师",
+            "score": 3,
+            "resume_file": "https://oss.example.com/resume.pdf",
+            "resume_md5": "d41d8cd98f00b204e9800998ecf8427e",
+            "resume_text": None,
+            "work_experience": None,
+            "education_background": None,
             "is_deleted": False,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
         }
 
     from app.services.candidate_service import CandidateService
@@ -203,6 +227,7 @@ def test_upload_resume_invalid_file_type(test_client: TestClient):
 @pytest.mark.asyncio
 async def test_upload_resume_success(test_client: TestClient, monkeypatch):
     """Test uploading resume successfully."""
+    from datetime import datetime, timezone
     from unittest.mock import AsyncMock
 
     # Mock upload_and_create_from_resume
@@ -212,10 +237,22 @@ async def test_upload_resume_success(test_client: TestClient, monkeypatch):
                 "id": 1,
                 "name": "张三",
                 "email": "zhangsan@example.com",
+                "phone": "13800138000",
                 "skills": ["Python"],
+                "highlights": "5年经验",
+                "years_of_experience": 5,
+                "education_level": "本科",
+                "recent_company": "某公司",
+                "recent_position": "工程师",
+                "score": 3,
                 "resume_file": "https://oss.example.com/resume.pdf",
-                "resume_md5": "abc123",
+                "resume_md5": "d41d8cd98f00b204e9800998ecf8427e",
+                "resume_text": None,
+                "work_experience": None,
+                "education_background": None,
                 "is_deleted": False,
+                "created_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc),
             },
             "file_url": "https://oss.example.com/resume.pdf",
             "parse_status": "success",

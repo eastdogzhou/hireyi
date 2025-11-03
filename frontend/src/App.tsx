@@ -10,7 +10,7 @@ function App() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="max-w-2xl mx-auto p-8 text-center">
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          AI Resume Scanning System
+          hireyi
         </h1>
         <p className="text-xl text-gray-600 mb-8">
           前端正在重构中...

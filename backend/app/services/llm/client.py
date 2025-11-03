@@ -7,8 +7,9 @@ Based on LiteLLM: https://github.com/berriai/litellm
 """
 
 import logging
+from collections.abc import AsyncIterable
 from dataclasses import dataclass
-from typing import Any, AsyncIterable, cast
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
