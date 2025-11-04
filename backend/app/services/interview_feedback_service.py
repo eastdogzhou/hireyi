@@ -1,12 +1,15 @@
 """Interview feedback and status change tracking service.
 
-This service handles dual-purpose operations:
-1. Interview evaluation records (with rating, comments, date)
-2. Status change history (with new status, reason)
+v2.0: Refactored to support three mutually exclusive record types:
+1. Interview evaluation records (interview_rating: 1-4)
+2. AI evaluation records (ai_rating: 1-10)
+3. Status/log records (new_status: status enum)
 """
 
 import logging
+from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 from postgrest import APIResponse
 from supabase import Client
@@ -17,10 +20,11 @@ logger = logging.getLogger(__name__)
 
 
 class InterviewFeedbackService(BaseService[dict[str, Any]]):
-    """Interview feedback and status change tracking service.
+    """Interview feedback and status change tracking service (v2.0).
 
     Provides comprehensive feedback management including:
-    - Creating and editing interview evaluations
+    - Creating and editing interview evaluations (human)
+    - Creating AI evaluation records
     - Recording status change history
     - Querying feedback by candidate/position
     - Timeline view support
@@ -33,68 +37,129 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
         :param org_id: Organization ID for data isolation (optional)
         """
         super().__init__(supabase, "interview_feedbacks", org_id=org_id)
-        logger.info(f"InterviewFeedbackService initialized{' with org_id=' + org_id if org_id else ''}")
+        logger.info(
+            f"InterviewFeedbackService v2.0 initialized"
+            f"{' with org_id=' + org_id if org_id else ''}"
+        )
 
     def create_interview_feedback(
         self,
         candidate_id: int,
-        interviewer: int,
-        rating: int,
+        interviewer: UUID,
+        interview_rating: int,
+        comments: str,
         position_id: int | None = None,
-        comments: str | None = None,
         interview_date: str | None = None,
+        interviewer_type: str = "user",
     ) -> dict[str, Any]:
-        """Create interview evaluation feedback.
+        """Create interview evaluation feedback (human interviewer).
 
         :param candidate_id: Candidate ID
-        :param interviewer: Interviewer user ID
-        :param rating: Interview rating (1-5)
+        :param interviewer: Interviewer UUID
+        :param interview_rating: Interview rating (1-4 scale)
+        :param comments: Interview feedback comments (required)
         :param position_id: Position ID (optional, for position-specific feedback)
-        :param comments: Interview feedback comments (optional)
-        :param interview_date: Interview date in YYYY-MM-DD format (optional)
+        :param interview_date: Interview date in YYYY-MM-DD format (optional, defaults to today)
+        :param interviewer_type: Interviewer type (default: 'user')
         :return: Created feedback data
         :raises ValueError: If rating is invalid
         """
         logger.info(
             f"Creating interview feedback: candidate={candidate_id}, "
-            f"position={position_id}, interviewer={interviewer}, rating={rating}"
+            f"position={position_id}, interviewer={interviewer}, rating={interview_rating}"
         )
 
         # Validate rating
-        if not (1 <= rating <= 5):
-            raise ValueError("Rating must be between 1 and 5")
+        if not (1 <= interview_rating <= 4):
+            raise ValueError("Interview rating must be between 1 and 4")
+
+        # Auto-fill interview_date if not provided
+        if not interview_date:
+            interview_date = datetime.now(UTC).date().isoformat()
 
         # Prepare data
         data = {
             "candidate_id": candidate_id,
             "position_id": position_id,
-            "interviewer": interviewer,
-            "rating": rating,
+            "interviewer": str(interviewer),
+            "interviewer_type": interviewer_type,
+            "interview_rating": interview_rating,
             "comments": comments,
             "interview_date": interview_date,
-            "is_status_change": False,  # This is an interview feedback
+            "ai_rating": None,
+            "new_status": None,
         }
 
         feedback = self.create(data)
         logger.info(f"Interview feedback created successfully: {feedback.get('id')}")
         return feedback
 
+    def create_ai_evaluation(
+        self,
+        candidate_id: int,
+        ai_agent_id: UUID,
+        ai_rating: int,
+        comments: str,
+        position_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Create AI evaluation record.
+
+        :param candidate_id: Candidate ID
+        :param ai_agent_id: AI agent UUID
+        :param ai_rating: AI rating (1-10 scale)
+        :param comments: AI evaluation comments (required)
+        :param position_id: Position ID (optional)
+        :return: Created AI evaluation record
+        :raises ValueError: If rating is invalid
+        """
+        logger.info(
+            f"Creating AI evaluation: candidate={candidate_id}, "
+            f"position={position_id}, agent={ai_agent_id}, rating={ai_rating}"
+        )
+
+        # Validate rating
+        if not (1 <= ai_rating <= 10):
+            raise ValueError("AI rating must be between 1 and 10")
+
+        # Use created_at date as interview_date
+        interview_date = datetime.now(UTC).date().isoformat()
+
+        # Prepare data
+        data = {
+            "candidate_id": candidate_id,
+            "position_id": position_id,
+            "interviewer": str(ai_agent_id),
+            "interviewer_type": "agent",
+            "interview_date": interview_date,
+            "comments": comments,
+            "interview_rating": None,
+            "ai_rating": ai_rating,
+            "new_status": None,
+        }
+
+        record = self.create(data)
+        logger.info(f"AI evaluation created successfully: {record.get('id')}")
+        return record
+
     def create_status_change_record(
         self,
         candidate_id: int,
-        operator: int,
+        operator: UUID,
         new_status: str,
+        comments: str,
         position_id: int | None = None,
-        reason: str | None = None,
+        operator_type: str = "user",
     ) -> dict[str, Any]:
         """Create status change history record.
 
         :param candidate_id: Candidate ID
-        :param operator: Operator user ID who made the status change
+        :param operator: Operator UUID who made the status change
         :param new_status: New status value
+        :param comments: Reason for status change (required)
         :param position_id: Position ID (optional, for position-specific status changes)
-        :param reason: Reason for status change (optional)
+        :param operator_type: Operator type (default: 'user')
         :return: Created status change record
+        :raises ValueError: If status is invalid
         """
         logger.info(
             f"Creating status change record: candidate={candidate_id}, "
@@ -115,108 +180,122 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
                 f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
             )
 
+        # Use created_at date as interview_date
+        interview_date = datetime.now(UTC).date().isoformat()
+
         # Prepare data
         data = {
             "candidate_id": candidate_id,
             "position_id": position_id,
-            "interviewer": operator,  # Use interviewer field for operator
+            "interviewer": str(operator),
+            "interviewer_type": operator_type,
+            "interview_date": interview_date,
+            "comments": comments,
+            "interview_rating": None,
+            "ai_rating": None,
             "new_status": new_status,
-            "comments": reason,
-            "is_status_change": True,  # This is a status change record
-            "rating": None,  # No rating for status changes
-            "interview_date": None,  # No date for status changes
         }
 
         record = self.create(data)
         logger.info(f"Status change record created successfully: {record.get('id')}")
         return record
 
-    def create_position_association_record(
+    def create_system_log(
         self,
         candidate_id: int,
-        position_id: int,
-        operator: int | None = None,
-        source: str = "manual",
+        comments: str,
+        position_id: int | None = None,
+        system_id: UUID | None = None,
     ) -> dict[str, Any]:
-        """Create position association event record.
+        """Create system log record.
 
-        This is automatically called when a candidate is associated with a position.
+        Used for automated system events (e.g., position association, automated actions).
 
         :param candidate_id: Candidate ID
-        :param position_id: Position ID
-        :param operator: Operator user ID (None for AI/system events)
-        :param source: Association source: "manual", "smart_screening", "ai"
-        :return: Created association record
+        :param comments: Log description
+        :param position_id: Position ID (optional)
+        :param system_id: System UUID (optional, defaults to special system UUID)
+        :return: Created system log record
         """
         logger.info(
-            f"Creating position association record: candidate={candidate_id}, "
-            f"position={position_id}, source={source}"
+            f"Creating system log: candidate={candidate_id}, "
+            f"position={position_id}, log={comments}"
         )
 
-        # Generate description based on source
-        source_descriptions = {
-            "manual": f"手动添加候选人到职位 (职位ID: {position_id})",
-            "smart_screening": f"智能筛选自动匹配到职位 (职位ID: {position_id})",
-            "ai": f"AI 自动推荐到职位 (职位ID: {position_id})",
-        }
-        comments = source_descriptions.get(
-            source, f"关联到职位 (职位ID: {position_id})"
-        )
+        # Use special system UUID if not provided
+        if not system_id:
+            system_id = UUID("00000000-0000-0000-0000-000000000000")
+
+        # Use created_at date as interview_date
+        interview_date = datetime.now(UTC).date().isoformat()
 
         # Prepare data
         data = {
             "candidate_id": candidate_id,
             "position_id": position_id,
-            "interviewer": operator,  # NULL for system events
+            "interviewer": str(system_id),
+            "interviewer_type": "system",
+            "interview_date": interview_date,
             "comments": comments,
-            "is_status_change": False,  # This is an event record, not status change
-            "rating": None,
-            "interview_date": None,
+            "interview_rating": None,
+            "ai_rating": None,
             "new_status": None,
         }
 
         record = self.create(data)
-        logger.info(
-            f"Position association record created successfully: {record.get('id')}"
-        )
+        logger.info(f"System log created successfully: {record.get('id')}")
         return record
 
     def update_feedback(
         self,
         record_id: int,
-        rating: int | None = None,
+        interview_rating: int | None = None,
+        ai_rating: int | None = None,
         comments: str | None = None,
         interview_date: str | None = None,
     ) -> dict[str, Any]:
-        """Update interview feedback (editing allowed).
+        """Update interview or AI evaluation feedback.
 
-        Only interview feedback can be edited, not status change records.
+        Note: Cannot edit status change records or change record type.
 
         :param record_id: Feedback record ID
-        :param rating: New rating (1-5, optional)
+        :param interview_rating: New interview rating (1-4, optional)
+        :param ai_rating: New AI rating (1-10, optional)
         :param comments: New comments (optional)
         :param interview_date: New interview date (optional)
         :return: Updated feedback data
-        :raises ValueError: If trying to edit status change record or invalid rating
+        :raises ValueError: If trying to edit status record or invalid rating
         """
-        logger.info(f"Updating interview feedback: {record_id}")
+        logger.info(f"Updating feedback: {record_id}")
 
-        # Get current record to check if it's a status change
+        # Get current record to check type
         current = self.get_by_id(record_id)
         if not current:
             raise ValueError(f"Feedback {record_id} not found")
 
-        if current.get("is_status_change"):
+        # Prevent editing status change records
+        if current.get("new_status") is not None:
             raise ValueError("Cannot edit status change records")
 
-        # Validate rating if provided
-        if rating is not None and not (1 <= rating <= 5):
-            raise ValueError("Rating must be between 1 and 5")
+        # Validate ratings if provided
+        if interview_rating is not None:
+            if not (1 <= interview_rating <= 4):
+                raise ValueError("Interview rating must be between 1 and 4")
+            if current.get("interview_rating") is None:
+                raise ValueError("Cannot change record type to interview rating")
+
+        if ai_rating is not None:
+            if not (1 <= ai_rating <= 10):
+                raise ValueError("AI rating must be between 1 and 10")
+            if current.get("ai_rating") is None:
+                raise ValueError("Cannot change record type to AI rating")
 
         # Prepare update data
         update_data = {}
-        if rating is not None:
-            update_data["rating"] = rating
+        if interview_rating is not None:
+            update_data["interview_rating"] = interview_rating
+        if ai_rating is not None:
+            update_data["ai_rating"] = ai_rating
         if comments is not None:
             update_data["comments"] = comments
         if interview_date is not None:
@@ -233,30 +312,32 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
     def get_feedbacks_for_candidate(
         self,
         candidate_id: int,
-        include_status_changes: bool = True,
+        record_type: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> dict[str, Any]:
-        """Get all execution records for a candidate (across all positions).
-
-        Returns both interview feedbacks and status changes, sorted by created_at (chronological).
+        """Get all feedback records for a candidate (across all positions).
 
         :param candidate_id: Candidate ID
-        :param include_status_changes: Include status change records (default: True)
+        :param record_type: Filter by type: 'interview', 'ai', 'status', or None (all)
         :param limit: Maximum number of results
         :param offset: Number of records to skip
         :return: Dictionary with feedbacks list, total count, limit, and offset
         """
-        logger.debug(f"Getting all execution records for candidate={candidate_id}")
+        logger.debug(f"Getting feedback records for candidate={candidate_id}, type={record_type}")
 
-        # Start with base query - only filter by candidate_id
+        # Start with base query
         query = self._get_active_query(count="exact").eq("candidate_id", candidate_id)
 
-        # Filter by type if requested
-        if not include_status_changes:
-            query = query.eq("is_status_change", False)
+        # Filter by record type
+        if record_type == "interview":
+            query = query.not_.is_("interview_rating", "null")
+        elif record_type == "ai":
+            query = query.not_.is_("ai_rating", "null")
+        elif record_type == "status":
+            query = query.not_.is_("new_status", "null")
 
-        # Sort by creation time (chronological order, newest first)
+        # Sort by creation time (newest first)
         response: APIResponse = (
             query.order("created_at", desc=True)
             .range(offset, offset + limit - 1)
@@ -266,7 +347,7 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
         feedbacks = response.data
         total = response.count if response.count is not None else len(feedbacks)
 
-        logger.debug(f"Found {total} execution records for candidate")
+        logger.debug(f"Found {total} feedback records for candidate")
 
         return {
             "feedbacks": feedbacks,
@@ -279,23 +360,21 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
         self,
         candidate_id: int,
         position_id: int,
-        include_status_changes: bool = True,
+        record_type: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> dict[str, Any]:
         """Get all feedbacks for a candidate-position pair.
 
-        Returns both interview feedbacks and status changes, sorted by created_at (chronological).
-
         :param candidate_id: Candidate ID
         :param position_id: Position ID
-        :param include_status_changes: Include status change records (default: True)
+        :param record_type: Filter by type: 'interview', 'ai', 'status', or None (all)
         :param limit: Maximum number of results
         :param offset: Number of records to skip
         :return: Dictionary with feedbacks list, total count, limit, and offset
         """
         logger.debug(
-            f"Getting feedbacks for candidate={candidate_id}, position={position_id}"
+            f"Getting feedbacks for candidate={candidate_id}, position={position_id}, type={record_type}"
         )
 
         # Start with base query
@@ -305,9 +384,13 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
             .eq("position_id", position_id)
         )
 
-        # Filter by type if requested
-        if not include_status_changes:
-            query = query.eq("is_status_change", False)
+        # Filter by record type
+        if record_type == "interview":
+            query = query.not_.is_("interview_rating", "null")
+        elif record_type == "ai":
+            query = query.not_.is_("ai_rating", "null")
+        elif record_type == "status":
+            query = query.not_.is_("new_status", "null")
 
         # Sort by creation time (chronological order)
         response: APIResponse = (
@@ -328,49 +411,85 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
             "offset": offset,
         }
 
-    def get_interview_feedbacks_only(
+    def get_interview_evaluations_only(
         self,
         candidate_id: int,
-        position_id: int,
+        position_id: int | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
-        """Get only interview evaluation feedbacks (exclude status changes).
+        """Get only interview evaluation records (human ratings).
 
         :param candidate_id: Candidate ID
-        :param position_id: Position ID
+        :param position_id: Position ID (optional)
         :param limit: Maximum number of results
         :param offset: Number of records to skip
-        :return: List of interview feedback records
+        :return: List of interview evaluation records
         """
         logger.debug(
-            f"Getting interview feedbacks only for candidate={candidate_id}, position={position_id}"
+            f"Getting interview evaluations for candidate={candidate_id}, position={position_id}"
         )
 
+        query = self._get_active_query().eq("candidate_id", candidate_id)
+
+        if position_id is not None:
+            query = query.eq("position_id", position_id)
+
         response: APIResponse = (
-            self._get_active_query()
-            .eq("candidate_id", candidate_id)
-            .eq("position_id", position_id)
-            .eq("is_status_change", False)
+            query.not_.is_("interview_rating", "null")
             .order("created_at", desc=False)
             .range(offset, offset + limit - 1)
             .execute()
         )
 
-        logger.debug(f"Found {len(response.data)} interview feedbacks")
+        logger.debug(f"Found {len(response.data)} interview evaluations")
+        return response.data
+
+    def get_ai_evaluations_only(
+        self,
+        candidate_id: int,
+        position_id: int | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """Get only AI evaluation records.
+
+        :param candidate_id: Candidate ID
+        :param position_id: Position ID (optional)
+        :param limit: Maximum number of results
+        :param offset: Number of records to skip
+        :return: List of AI evaluation records
+        """
+        logger.debug(
+            f"Getting AI evaluations for candidate={candidate_id}, position={position_id}"
+        )
+
+        query = self._get_active_query().eq("candidate_id", candidate_id)
+
+        if position_id is not None:
+            query = query.eq("position_id", position_id)
+
+        response: APIResponse = (
+            query.not_.is_("ai_rating", "null")
+            .order("created_at", desc=False)
+            .range(offset, offset + limit - 1)
+            .execute()
+        )
+
+        logger.debug(f"Found {len(response.data)} AI evaluations")
         return response.data
 
     def get_status_change_history(
         self,
         candidate_id: int,
-        position_id: int,
+        position_id: int | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
-        """Get only status change history (exclude interview feedbacks).
+        """Get only status change history.
 
         :param candidate_id: Candidate ID
-        :param position_id: Position ID
+        :param position_id: Position ID (optional)
         :param limit: Maximum number of results
         :param offset: Number of records to skip
         :return: List of status change records
@@ -379,11 +498,13 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
             f"Getting status change history for candidate={candidate_id}, position={position_id}"
         )
 
+        query = self._get_active_query().eq("candidate_id", candidate_id)
+
+        if position_id is not None:
+            query = query.eq("position_id", position_id)
+
         response: APIResponse = (
-            self._get_active_query()
-            .eq("candidate_id", candidate_id)
-            .eq("position_id", position_id)
-            .eq("is_status_change", True)
+            query.not_.is_("new_status", "null")
             .order("created_at", desc=False)
             .range(offset, offset + limit - 1)
             .execute()
@@ -394,13 +515,13 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
 
     def get_feedbacks_by_interviewer(
         self,
-        interviewer: int,
+        interviewer: UUID,
         limit: int = 100,
         offset: int = 0,
     ) -> list[dict[str, Any]]:
         """Get all feedbacks created by a specific interviewer.
 
-        :param interviewer: Interviewer user ID
+        :param interviewer: Interviewer UUID
         :param limit: Maximum number of results
         :param offset: Number of records to skip
         :return: List of feedback records
@@ -409,7 +530,7 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
 
         response: APIResponse = (
             self._get_active_query()
-            .eq("interviewer", interviewer)
+            .eq("interviewer", str(interviewer))
             .order("created_at", desc=True)
             .range(offset, offset + limit - 1)
             .execute()
@@ -424,18 +545,17 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
         self,
         candidate_id: int,
         position_id: int,
-        is_status_change: bool | None = None,
+        record_type: str | None = None,
     ) -> int:
         """Count feedbacks for a candidate-position pair.
 
         :param candidate_id: Candidate ID
         :param position_id: Position ID
-        :param is_status_change: Filter by type (None=all, True=status changes, False=interviews)
+        :param record_type: Filter by type: 'interview', 'ai', 'status', or None (all)
         :return: Count of feedback records
         """
         logger.debug(
-            f"Counting feedbacks for candidate={candidate_id}, position={position_id}, "
-            f"is_status_change={is_status_change}"
+            f"Counting feedbacks for candidate={candidate_id}, position={position_id}, type={record_type}"
         )
 
         query = (
@@ -444,8 +564,13 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
             .eq("position_id", position_id)
         )
 
-        if is_status_change is not None:
-            query = query.eq("is_status_change", is_status_change)
+        # Filter by record type
+        if record_type == "interview":
+            query = query.not_.is_("interview_rating", "null")
+        elif record_type == "ai":
+            query = query.not_.is_("ai_rating", "null")
+        elif record_type == "status":
+            query = query.not_.is_("new_status", "null")
 
         response: APIResponse = query.execute()
 

@@ -1,7 +1,14 @@
-"""Interview feedback data models."""
+"""Interview feedback data models.
+
+v2.0: Refactored to support three mutually exclusive record types:
+  1. Interview evaluations (interview_rating: 1-4)
+  2. AI evaluations (ai_rating: 1-10)
+  3. Status/log records (new_status: status enum)
+"""
 
 from datetime import date, datetime
 from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import Field, PlainSerializer, field_validator, model_validator
 
@@ -21,6 +28,8 @@ DateStr = Annotated[
 # ============================================================================
 
 InterviewRating = Literal[1, 2, 3, 4]
+AIRating = Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+InterviewerType = Literal["user", "agent", "system"]
 FeedbackStatus = Literal[
     "screening",
     "interview",
@@ -37,17 +46,24 @@ FeedbackStatus = Literal[
 
 
 class InterviewFeedback(ResponseSchema):
-    """Interview feedback database model (execution record)."""
+    """Interview feedback database model (v2.0).
+
+    Supports three mutually exclusive record types:
+    - Interview evaluation: interview_rating is set
+    - AI evaluation: ai_rating is set
+    - Status/log record: new_status is set
+    """
 
     id: int
     candidate_id: int
     position_id: int | None = None  # Nullable: allows candidate-level records
-    interviewer: int | None = None
-    rating: InterviewRating | None = None
-    comments: str | None = None
-    interview_date: date | None = None
+    interviewer: UUID
+    interviewer_type: InterviewerType
+    interview_date: date
+    comments: str
+    interview_rating: InterviewRating | None = None
+    ai_rating: AIRating | None = None
     new_status: FeedbackStatus | None = None
-    is_status_change: bool = Field(default=False)
     is_deleted: bool = Field(default=False)
     created_at: datetime
 
@@ -58,39 +74,34 @@ class InterviewFeedback(ResponseSchema):
 
 
 class InterviewFeedbackCreate(CreateSchema):
-    """Schema for creating interview feedback (execution record)."""
+    """Schema for creating interview feedback (v2.0).
+
+    Must specify exactly one of: interview_rating, ai_rating, or new_status.
+    """
 
     candidate_id: int
     position_id: int | None = None  # Optional: allows candidate-level records
-    interviewer: int | None = None
-    rating: InterviewRating | None = None
-    comments: str | None = None
-    interview_date: DateStr | None = None
+    interviewer: UUID
+    interviewer_type: InterviewerType
+    interview_date: DateStr | None = None  # Auto-filled with created_at date if None
+    comments: str
+    interview_rating: InterviewRating | None = None
+    ai_rating: AIRating | None = None
     new_status: FeedbackStatus | None = None
-    is_status_change: bool = Field(default=False)
-
-    @field_validator("is_status_change", mode="after")
-    @classmethod
-    def validate_status_change(cls, v: bool, info) -> bool:
-        """Auto-detect if this is a status change record."""
-        data = info.data
-        new_status = data.get("new_status")
-
-        # If new_status is provided, mark as status change
-        if new_status is not None:
-            return True
-
-        return v
 
     @model_validator(mode="after")
-    def validate_rating_for_interview(self) -> "InterviewFeedbackCreate":
-        """Validate rating is provided for interview feedback (not status changes)."""
-        # Status changes have new_status set, interview feedback does not
-        is_status_change = self.new_status is not None
+    def validate_mutually_exclusive_types(self) -> "InterviewFeedbackCreate":
+        """Ensure exactly one of the three type fields is set."""
+        type_fields = [
+            self.interview_rating is not None,
+            self.ai_rating is not None,
+            self.new_status is not None,
+        ]
 
-        # Rating should be provided for interview feedback (not status changes)
-        if not is_status_change and self.rating is None:
-            raise ValueError("rating is required for interview feedback")
+        if sum(type_fields) != 1:
+            raise ValueError(
+                "Exactly one of interview_rating, ai_rating, or new_status must be provided"
+            )
 
         return self
 
@@ -101,9 +112,14 @@ class InterviewFeedbackCreate(CreateSchema):
 
 
 class InterviewFeedbackUpdate(UpdateSchema):
-    """Schema for updating interview feedback."""
+    """Schema for updating interview feedback.
 
-    rating: InterviewRating | None = None
+    Note: Cannot change record type (interview/AI/status).
+    Only updates content within the same type.
+    """
+
+    interview_rating: InterviewRating | None = None
+    ai_rating: AIRating | None = None
     comments: str | None = None
     interview_date: DateStr | None = None
 
@@ -114,33 +130,36 @@ class InterviewFeedbackUpdate(UpdateSchema):
 
 
 class InterviewFeedbackResponse(ResponseSchema):
-    """Interview feedback response schema."""
+    """Interview feedback response schema (v2.0)."""
 
     id: int
     candidate_id: int
     position_id: int | None  # Nullable
-    interviewer: int | None
-    rating: InterviewRating | None
-    comments: str | None
-    interview_date: DateStr | None
+    interviewer: UUID
+    interviewer_type: InterviewerType
+    interview_date: DateStr
+    comments: str
+    interview_rating: InterviewRating | None
+    ai_rating: AIRating | None
     new_status: FeedbackStatus | None
-    is_status_change: bool
     is_deleted: bool
     created_at: datetime
 
 
 class InterviewFeedbackWithDetails(ResponseSchema):
-    """Interview feedback with nested details."""
+    """Interview feedback with nested details (v2.0)."""
 
     id: int
     candidate_id: int
     position_id: int | None  # Nullable
-    interviewer: int | None
-    rating: InterviewRating | None
-    comments: str | None
-    interview_date: DateStr | None
+    interviewer: UUID
+    interviewer_type: InterviewerType
+    interview_date: DateStr
+    comments: str
+    interview_rating: InterviewRating | None
+    ai_rating: AIRating | None
     new_status: FeedbackStatus | None
-    is_status_change: bool
+    is_deleted: bool
     created_at: datetime
     # Nested data (populated by service layer)
     interviewer_name: str | None = None
@@ -149,8 +168,59 @@ class InterviewFeedbackWithDetails(ResponseSchema):
 
 
 # ============================================================================
-# Status Change Specific Schema
+# Specialized Create Schemas (Convenience Wrappers)
 # ============================================================================
+
+
+class InterviewEvaluationCreate(CreateSchema):
+    """Schema for creating an interview evaluation record."""
+
+    candidate_id: int
+    position_id: int | None = None
+    interviewer: UUID
+    interviewer_type: InterviewerType = "user"
+    interview_date: DateStr
+    comments: str
+    interview_rating: InterviewRating
+
+    def to_feedback_create(self) -> InterviewFeedbackCreate:
+        """Convert to InterviewFeedbackCreate."""
+        return InterviewFeedbackCreate(
+            candidate_id=self.candidate_id,
+            position_id=self.position_id,
+            interviewer=self.interviewer,
+            interviewer_type=self.interviewer_type,
+            interview_date=self.interview_date,
+            comments=self.comments,
+            interview_rating=self.interview_rating,
+            ai_rating=None,
+            new_status=None,
+        )
+
+
+class AIEvaluationCreate(CreateSchema):
+    """Schema for creating an AI evaluation record."""
+
+    candidate_id: int
+    position_id: int | None = None
+    interviewer: UUID  # AI agent UUID
+    interviewer_type: InterviewerType = "agent"
+    comments: str
+    ai_rating: AIRating
+
+    def to_feedback_create(self) -> InterviewFeedbackCreate:
+        """Convert to InterviewFeedbackCreate."""
+        return InterviewFeedbackCreate(
+            candidate_id=self.candidate_id,
+            position_id=self.position_id,
+            interviewer=self.interviewer,
+            interviewer_type=self.interviewer_type,
+            interview_date=None,  # Will use created_at date
+            comments=self.comments,
+            interview_rating=None,
+            ai_rating=self.ai_rating,
+            new_status=None,
+        )
 
 
 class StatusChangeCreate(CreateSchema):
@@ -158,7 +228,8 @@ class StatusChangeCreate(CreateSchema):
 
     candidate_id: int
     position_id: int | None = None  # Optional: allows candidate-level status changes
-    interviewer: int
+    interviewer: UUID
+    interviewer_type: InterviewerType = "user"
     new_status: FeedbackStatus
     comments: str
 
@@ -168,9 +239,10 @@ class StatusChangeCreate(CreateSchema):
             candidate_id=self.candidate_id,
             position_id=self.position_id,
             interviewer=self.interviewer,
-            new_status=self.new_status,
+            interviewer_type=self.interviewer_type,
+            interview_date=None,  # Will use created_at date
             comments=self.comments,
-            is_status_change=True,
-            rating=None,
-            interview_date=None,
+            interview_rating=None,
+            ai_rating=None,
+            new_status=self.new_status,
         )
