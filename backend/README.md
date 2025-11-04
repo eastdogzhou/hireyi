@@ -1,8 +1,8 @@
 # AI Resume Scanning System - Backend
 
-> 📅 最后更新: 2025-10-30
+> 📅 最后更新: 2025-01-27
 > 📊 完成度: 100%
-> 🎯 状态: 核心功能与认证系统已完成，可用于生产环境
+> 🎯 状态: 核心功能与认证系统已完成，可用于生产环境（数据库 Schema v2.0）
 
 AI-powered resume management and talent screening platform backend.
 
@@ -956,23 +956,52 @@ Also cascade soft-deletes all associated `position_candidates` records.
 
 Base path: `/api/interview-feedbacks`
 
-**Important Note**: As of database schema v1.2 (2025-10-22), execution records support both **candidate-level** and **position-level** records. The `position_id` field is now optional, allowing records that relate to the candidate independently of any specific position.
+**Important Note**: As of database schema v2.0 (2025-01-27), the table supports **three mutually exclusive record types**:
+1. **Interview Evaluations**: `interview_rating` field (1-4 scale) for human interviews
+2. **AI Evaluations**: `ai_rating` field (1-10 scale) for AI agent assessments
+3. **Status/Log Records**: `new_status` field for status changes or system logs
+
+**Key Changes from v1.x**:
+- `interviewer`: Changed from INTEGER to UUID (no foreign key constraint)
+- `interviewer_type`: New required field ('user', 'agent', 'system')
+- `interview_rating`: Renamed from `rating`, now optional (mutually exclusive)
+- `ai_rating`: New field for AI evaluations (mutually exclusive)
+- `interview_date`, `comments`: Now required (auto-fill with created_at date for non-interview records)
+- `is_status_change`: Removed (inferred from field values)
+
+The `position_id` field remains optional, allowing candidate-level records independent of any specific position.
 
 #### `POST /api/interview-feedbacks/` - Create Interview Feedback
-Create a new interview feedback record.
+Create a new interview/AI evaluation or status change record (generic endpoint).
 
-**Note**: For pure status changes, use `/status-change` endpoint instead.
+**Important**: Must specify exactly one of: `interview_rating`, `ai_rating`, or `new_status`.
 
-**Request Body**:
+**Note**: For convenience, use specialized endpoints:
+- POST `/api/interview-feedbacks/` for interview evaluations
+- POST `/api/interview-feedbacks/status-change` for status changes
+
+**Request Body (Interview Evaluation)**:
 ```json
 {
   "candidate_id": 1,
   "position_id": 1,  // Optional: can be null for candidate-level records
-  "interviewer": 2,
-  "interview_date": "2025-01-17",
-  "rating": 3,  // 1-5 scale
+  "interviewer": "12345678-1234-5678-1234-567812345678",  // UUID
+  "interviewer_type": "user",  // "user" | "agent" | "system"
+  "interview_rating": 3,  // 1-4 scale
   "comments": "技术能力扎实，沟通能力良好...",
-  "is_status_change": false
+  "interview_date": "2025-01-27"  // Optional, auto-filled with today if omitted
+}
+```
+
+**Request Body (AI Evaluation)**:
+```json
+{
+  "candidate_id": 1,
+  "position_id": 1,
+  "interviewer": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",  // AI agent UUID
+  "interviewer_type": "agent",
+  "ai_rating": 8,  // 1-10 scale
+  "comments": "AI 面试评估：技术能力强，项目经验丰富"
 }
 ```
 
@@ -980,22 +1009,21 @@ Create a new interview feedback record.
 
 **Status Codes**:
 - `201`: Created successfully
-- `400`: Validation error (e.g., rating required but not provided)
+- `400`: Validation error (e.g., multiple type fields specified, missing required fields)
 - `500`: Server error
 
 #### `POST /api/interview-feedbacks/status-change` - Create Status Change
 Create a status change record (convenience endpoint).
-
-Automatically sets `is_status_change=true`.
 
 **Request Body**:
 ```json
 {
   "candidate_id": 1,
   "position_id": 1,  // Optional: can be null for candidate-level status changes
-  "interviewer": 2,
+  "interviewer": "12345678-1234-5678-1234-567812345678",  // UUID
+  "interviewer_type": "user",  // "user" | "agent" | "system"
   "new_status": "interview",  // "screening" | "interview" | "offer" | "hired" | "rejected" | "withdrawn"
-  "reason": "通过初步筛选，安排一面"
+  "comments": "通过初步筛选，安排一面"
 }
 ```
 
@@ -1013,21 +1041,22 @@ curl -X POST "http://localhost:8000/api/interview-feedbacks/status-change" \
   -d '{
     "candidate_id": 1,
     "position_id": 1,
-    "interviewer": 2,
+    "interviewer": "12345678-1234-5678-1234-567812345678",
+    "interviewer_type": "user",
     "new_status": "interview",
-    "reason": "通过初步筛选"
+    "comments": "通过初步筛选"
   }'
 ```
 
 #### `GET /api/interview-feedbacks/` - List Feedbacks
 Get all feedback records for a candidate-position pair.
 
-Returns both interview feedbacks and status changes in chronological order.
+Returns interview evaluations, AI evaluations, and status changes in chronological order.
 
 **Query Parameters**:
 - `candidate_id` (int, required): Candidate ID
 - `position_id` (int, required): Position ID
-- `include_status_changes` (bool, default=true): Include status change records
+- `record_type` (string, optional): Filter by type: 'interview', 'ai', 'status', or null (all records)
 - `limit` (int, default=100): Results per page (1-200)
 - `offset` (int, default=0): Page offset
 
@@ -1039,25 +1068,43 @@ Returns both interview feedbacks and status changes in chronological order.
       "id": 1,
       "candidate_id": 1,
       "position_id": 1,
-      "interviewer": 2,
-      "interview_date": "2025-01-17",
-      "rating": 3,
+      "interviewer": "12345678-1234-5678-1234-567812345678",
+      "interviewer_type": "user",
+      "interview_date": "2025-01-27",
+      "interview_rating": 3,
+      "ai_rating": null,
+      "new_status": null,
       "comments": "技术能力扎实...",
-      "is_status_change": false,
-      "created_at": "2025-01-17T14:30:00Z"
+      "created_at": "2025-01-27T14:30:00Z"
     },
     {
       "id": 2,
       "candidate_id": 1,
       "position_id": 1,
-      "interviewer": 2,
+      "interviewer": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "interviewer_type": "agent",
+      "interview_date": "2025-01-27",
+      "interview_rating": null,
+      "ai_rating": 8,
+      "new_status": null,
+      "comments": "AI评估：技术能力强",
+      "created_at": "2025-01-27T10:00:00Z"
+    },
+    {
+      "id": 3,
+      "candidate_id": 1,
+      "position_id": 1,
+      "interviewer": "12345678-1234-5678-1234-567812345678",
+      "interviewer_type": "user",
+      "interview_date": "2025-01-25",
+      "interview_rating": null,
+      "ai_rating": null,
       "new_status": "interview",
       "comments": "通过初步筛选",
-      "is_status_change": true,
-      "created_at": "2025-01-15T10:00:00Z"
+      "created_at": "2025-01-25T10:00:00Z"
     }
   ],
-  "total": 2,
+  "total": 3,
   "limit": 100,
   "offset": 0
 }
@@ -1068,20 +1115,26 @@ Returns both interview feedbacks and status changes in chronological order.
 # Get all feedbacks
 curl "http://localhost:8000/api/interview-feedbacks/?candidate_id=1&position_id=1"
 
-# Get only interview evaluations (exclude status changes)
-curl "http://localhost:8000/api/interview-feedbacks/?candidate_id=1&position_id=1&include_status_changes=false"
+# Get only interview evaluations
+curl "http://localhost:8000/api/interview-feedbacks/?candidate_id=1&position_id=1&record_type=interview"
+
+# Get only AI evaluations
+curl "http://localhost:8000/api/interview-feedbacks/?candidate_id=1&position_id=1&record_type=ai"
+
+# Get only status changes
+curl "http://localhost:8000/api/interview-feedbacks/?candidate_id=1&position_id=1&record_type=status"
 ```
 
 #### `GET /api/interview-feedbacks/candidate/{candidate_id}` - Get Candidate Execution Records
 Get all execution records for a candidate across all positions.
 
-Returns candidate-level records (including position associations, interview feedbacks, and status changes) in chronological order (newest first).
+Returns candidate-level records (including interview evaluations, AI evaluations, and status changes) in chronological order (newest first).
 
 **Path Parameters**:
 - `candidate_id` (int, required): Candidate ID
 
 **Query Parameters**:
-- `include_status_changes` (bool, default=true): Include status change records
+- `record_type` (string, optional): Filter by type: 'interview', 'ai', 'status', or null (all records)
 - `limit` (int, default=100): Results per page (1-200)
 - `offset` (int, default=0): Page offset
 
@@ -1093,31 +1146,40 @@ Returns candidate-level records (including position associations, interview feed
       "id": 5,
       "candidate_id": 1,
       "position_id": null,
-      "interviewer": 2,
-      "interview_date": "2025-10-22",
-      "rating": 4,
+      "interviewer": "12345678-1234-5678-1234-567812345678",
+      "interviewer_type": "user",
+      "interview_date": "2025-01-27",
+      "interview_rating": 4,
+      "ai_rating": null,
+      "new_status": null,
       "comments": "候选人技术能力出色...",
-      "is_status_change": false,
-      "created_at": "2025-10-22T15:30:00Z"
+      "created_at": "2025-01-27T15:30:00Z"
     },
     {
       "id": 4,
       "candidate_id": 1,
       "position_id": 2,
-      "interviewer": null,
-      "comments": "智能筛选自动匹配到职位 (职位ID: 2)",
-      "is_status_change": false,
-      "created_at": "2025-10-22T10:00:00Z"
+      "interviewer": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "interviewer_type": "agent",
+      "interview_date": "2025-01-27",
+      "interview_rating": null,
+      "ai_rating": 7,
+      "new_status": null,
+      "comments": "AI 面试评估：候选人综合能力良好",
+      "created_at": "2025-01-27T10:00:00Z"
     },
     {
       "id": 3,
       "candidate_id": 1,
       "position_id": 1,
-      "interviewer": 2,
+      "interviewer": "12345678-1234-5678-1234-567812345678",
+      "interviewer_type": "user",
+      "interview_date": "2025-01-25",
+      "interview_rating": null,
+      "ai_rating": null,
       "new_status": "interview",
       "comments": "通过初步筛选",
-      "is_status_change": true,
-      "created_at": "2025-10-20T14:00:00Z"
+      "created_at": "2025-01-25T14:00:00Z"
     }
   ],
   "total": 3,
@@ -1135,21 +1197,29 @@ Returns candidate-level records (including position associations, interview feed
 # Get all execution records for candidate
 curl "http://localhost:8000/api/interview-feedbacks/candidate/1"
 
-# Get only interview evaluations (exclude status changes)
-curl "http://localhost:8000/api/interview-feedbacks/candidate/1?include_status_changes=false"
+# Get only interview evaluations
+curl "http://localhost:8000/api/interview-feedbacks/candidate/1?record_type=interview"
+
+# Get only AI evaluations
+curl "http://localhost:8000/api/interview-feedbacks/candidate/1?record_type=ai"
 ```
 
 #### `GET /api/interview-feedbacks/interviewer/{interviewer_id}` - List by Interviewer
-Get all feedbacks created by a specific interviewer.
+Get all feedbacks created by a specific interviewer/agent.
 
 **Path Parameters**:
-- `interviewer_id` (int, required): Interviewer user ID
+- `interviewer_id` (UUID, required): Interviewer/agent UUID
 
 **Query Parameters**:
 - `limit` (int, default=100): Results per page (1-200)
 - `offset` (int, default=0): Page offset
 
 **Response**: List of feedback objects
+
+**Example**:
+```bash
+curl "http://localhost:8000/api/interview-feedbacks/interviewer/12345678-1234-5678-1234-567812345678"
+```
 
 #### `GET /api/interview-feedbacks/{feedback_id}` - Get Feedback
 Get feedback details by ID.
@@ -1164,18 +1234,27 @@ Get feedback details by ID.
 - `404`: Feedback not found
 
 #### `PATCH /api/interview-feedbacks/{feedback_id}` - Update Feedback
-Update interview feedback (partial update).
+Update interview/AI feedback (partial update).
 
-**Note**: Only interview evaluation records can be edited. Status change records are immutable.
+**Note**: Only interview and AI evaluation records can be edited. Status change records are immutable. Cannot change record type (e.g., from interview to AI).
 
 **Path Parameters**:
 - `feedback_id` (int, required): Feedback record ID
 
-**Request Body**:
+**Request Body (Interview Evaluation)**:
 ```json
 {
-  "rating": 4,
-  "comments": "Updated evaluation..."
+  "interview_rating": 4,
+  "comments": "Updated evaluation...",
+  "interview_date": "2025-01-28"
+}
+```
+
+**Request Body (AI Evaluation)**:
+```json
+{
+  "ai_rating": 9,
+  "comments": "Updated AI assessment..."
 }
 ```
 
@@ -1183,7 +1262,7 @@ Update interview feedback (partial update).
 
 **Status Codes**:
 - `200`: Updated successfully
-- `400`: Trying to edit status change record or validation error
+- `400`: Trying to edit status change record, attempting to change record type, or validation error
 - `404`: Feedback not found
 - `500`: Server error
 
@@ -1365,18 +1444,31 @@ Manages candidate-position associations and scoring.
 - `remove_association(position_id, candidate_id)` - Soft delete association
 
 #### `InterviewFeedbackService` (`app/services/interview_feedback_service.py`)
-Handles interview evaluations and status changes (execution records).
+Handles interview evaluations, AI evaluations, and status changes (execution records).
 
-**Important**: As of schema v1.2, supports both candidate-level and position-level records. The `position_id` field is optional.
+**Important**: As of schema v2.0, supports **three mutually exclusive record types**:
+1. Interview evaluations (interview_rating: 1-4)
+2. AI evaluations (ai_rating: 1-10)
+3. Status/log records (new_status: status enum)
+
+**Key Changes from v1.x**:
+- `interviewer`: Now accepts UUID instead of INT
+- `interviewer_type`: New required parameter ('user', 'agent', 'system')
+- `record_type`: Parameter replaces `include_status_changes` for filtering
 
 **Key Methods**:
-- `create(data)` - Create feedback record (interview evaluation or status change)
+- `create(data)` - Create feedback record (interview/AI evaluation or status change)
+- `create_interview_feedback(candidate_id, interviewer: UUID, interview_rating, comments, ...)` - Create interview evaluation
+- `create_ai_evaluation(candidate_id, ai_agent_id: UUID, ai_rating, comments, ...)` - Create AI evaluation
+- `create_status_change_record(candidate_id, operator: UUID, new_status, comments, ...)` - Create status change
+- `create_system_log(candidate_id, operator: UUID, comments, ...)` - Create system log
 - `get_by_id(id)` - Get feedback by ID
-- `update(id, data)` - Update feedback (only non-status-change records)
-- `get_feedbacks_for_candidate_position(candidate_id, position_id, include_status_changes, limit, offset)` - Get all feedbacks for pair
-- `get_feedbacks_for_candidate(candidate_id, include_status_changes, limit, offset)` - Get all execution records for a candidate (across all positions)
-- `create_position_association_record(candidate_id, position_id, operator, source)` - Auto-create record when candidate is associated with position
-- `get_feedbacks_by_interviewer(interviewer, limit, offset)` - Get feedbacks by interviewer
+- `update(id, data)` - Update feedback (only interview/AI records, not status changes)
+- `get_feedbacks_for_candidate_position(candidate_id, position_id, record_type, limit, offset)` - Get feedbacks for pair
+- `get_feedbacks_for_candidate(candidate_id, record_type, limit, offset)` - Get all execution records for a candidate
+- `get_feedbacks_by_interviewer(interviewer: UUID, limit, offset)` - Get feedbacks by interviewer UUID
+- `get_interview_evaluations_only(...)` - Get only interview evaluation records
+- `get_ai_evaluations_only(...)` - Get only AI evaluation records
 
 #### `SmartScreeningService` (`app/services/smart_screening_service.py`)
 Intelligent candidate screening and matching.
@@ -1837,18 +1929,26 @@ await text_complete("claude-3-opus", messages)           # Anthropic
 
 ### Database Schema
 
-**Current Version**: v1.2 (2025-10-22)
+**Current Version**: v2.0 (2025-01-27)
 
 Key tables:
 
 - **candidates**: Candidate/talent pool with AI-extracted structured data
 - **positions**: Job positions with requirements
 - **position_candidates**: M2M relationship with scoring (relevance_score, fit_score, overall_score)
-- **interview_feedbacks**: Execution records including interview evaluations, status changes, and position associations
-  - **v1.2 Change**: `position_id` is now nullable, supporting candidate-level records independent of positions
+- **interview_feedbacks**: Execution records with three mutually exclusive types:
+  - **v2.0 Major Changes**:
+    - Supports three record types: interview evaluations (interview_rating: 1-4), AI evaluations (ai_rating: 1-10), status/log records (new_status)
+    - `interviewer`: Changed from INTEGER to UUID (no FK constraint)
+    - `interviewer_type`: New required field ('user', 'agent', 'system')
+    - `interview_rating`: Renamed from `rating`, mutually exclusive with ai_rating and new_status
+    - `ai_rating`: New field for AI evaluations
+    - `interview_date`, `comments`: Now required (auto-fill for non-interview records)
+    - `is_status_change`: Removed (inferred from field values)
+    - `position_id`: Remains nullable for candidate-level records
 - **users**: System users (future expansion)
 
-See `../database/schema.sql` for complete schema.
+See `../database/schema_v2.sql` for complete schema.
 
 ### Supabase Integration
 
@@ -1889,7 +1989,11 @@ response = supabase.table("candidates").insert(data).execute()
 - ✅ **Candidate CRUD** with search, filtering, pagination
 - ✅ **Position CRUD** with search, filtering, status management
 - ✅ **Interview Feedback** CRUD with timeline tracking
-- ✅ **Candidate Execution Records** - Candidate-level records independent of positions (schema v1.2, 2025-10-22)
+  - ✅ **Schema v2.0 Refactor** (2025-01-27): Three mutually exclusive record types (interview, AI, status/log)
+  - ✅ **Interview Evaluations**: Human interviews with interview_rating (1-4)
+  - ✅ **AI Evaluations**: AI agent assessments with ai_rating (1-10)
+  - ✅ **Status/Log Records**: Status changes and system logs with new_status
+- ✅ **Candidate Execution Records** - Candidate-level records independent of positions
 - ✅ **Resume Upload** with AI parsing (single and batch)
 - ✅ **File Storage** via Aliyun OSS
 - ✅ **LLM Integration** via LiteLLM (100+ providers)

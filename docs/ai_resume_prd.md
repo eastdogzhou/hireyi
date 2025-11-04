@@ -1,9 +1,9 @@
 # AI 人才筛选系统 PRD
 
 ---
-**文档版本**: v1.4
-**数据库版本**: v1.4
-**最后更新**: 2025-01-26
+**文档版本**: v2.0
+**数据库版本**: v2.0
+**最后更新**: 2025-01-27
 **状态**: 生产就绪
 ---
 
@@ -11,6 +11,7 @@
 
 | 版本 | 日期 | 主要变更 |
 |------|------|---------|
+| v2.0 | 2025-01-27 | interview_feedbacks表重构：支持三种互斥记录类型（面试评价、AI评价、状态变更），interviewer改为UUID，新增interviewer_type和ai_rating字段 |
 | v1.4 | 2025-01-25 | 全局评分改为10分制 (0-10)，基于简历内容的LLM评分系统 |
 | v1.3 | 2025-01-25 | candidates表添加resume_text字段存储简历纯文本 |
 | v1.2 | 2024-10-22 | interview_feedbacks.position_id改为可空，支持候选人级别记录 |
@@ -51,12 +52,20 @@
 
 ### 3. 面试评价评分 (Interview Rating)
 
-- **字段**: `interview_feedbacks.rating`
+- **字段**: `interview_feedbacks.interview_rating`
 - **分值范围**: **1-4 (4分制)**
 - **用途**: 面试官对候选人的主观评价
 - **评估依据**: 面试表现
 
-**⚠️ 注意**: 不要混淆这三种评分！
+### 4. AI 评价评分 (AI Rating) - v2.0 新增
+
+- **字段**: `interview_feedbacks.ai_rating`
+- **分值范围**: **1-10 (10分制)**
+- **用途**: AI 对候选人面试的自动评估
+- **评估依据**: AI 面试对话内容分析
+- **互斥性**: 与 interview_rating 和 new_status 互斥
+
+**⚠️ 注意**: 不要混淆这四种评分！interview_rating、ai_rating、new_status 三个字段在 interview_feedbacks 表中同一条记录只能有一个非空。
 
 ---
 
@@ -281,29 +290,33 @@ Authorization: Bearer YOUR_SUPABASE_ANON_KEY
 
 #### 2.3.2 执行记录数据（面试评价表）
 
-**数据库版本**: v1.2 (2025-10-22)
+**数据库版本**: v2.0 (2025-01-27)
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | SERIAL | 记录唯一标识（自增主键） |
-| candidate_id | INTEGER | 候选人 ID |
-| position_id | INTEGER | 关联职位（v1.2: 可选，支持候选人级别记录） |
-| interviewer | INTEGER | 面试官/操作人 ID（引用 users.id，系统事件时可为NULL） |
-| rating | INTEGER | 评分 (1-4，4分制)，状态变更时可为NULL |
-| comments | TEXT | 面试评价、状态变更原因、或系统事件描述 |
-| interview_date | DATE | 面试日期，状态变更时可为NULL |
-| new_status | VARCHAR(20) | 新状态（用于状态变更记录） |
-| is_status_change | BOOLEAN | 是否为状态变更记录 |
+| candidate_id | INTEGER | 候选人 ID（必填） |
+| position_id | INTEGER | 关联职位（可空，支持候选人级别记录） |
+| interviewer | UUID | 面试官/AI/系统操作者 UUID（必填，无外键约束） |
+| interviewer_type | VARCHAR(20) | 评价者类型：'user', 'agent', 'system'（必填） |
+| interview_date | DATE | 面试日期（必填，非面试记录填 created_at 日期） |
+| comments | TEXT | 面试评价、AI评价、状态变更原因、或系统事件描述（必填） |
+| interview_rating | INTEGER | 面试评分 (1-4，4分制)，与 ai_rating、new_status 互斥 |
+| ai_rating | INTEGER | AI 评分 (1-10，10分制)，与 interview_rating、new_status 互斥 |
+| new_status | VARCHAR(20) | 新状态（用于状态变更记录），与 interview_rating、ai_rating 互斥 |
 | is_deleted | BOOLEAN | 软删除标记 |
 | created_at | TIMESTAMP | 创建时间 |
 
 **说明**：
-- **v1.2 架构变更**：该表从"面试评价表"扩展为"执行记录表"，支持候选人级别的独立记录
-- 该表具有多重职能：
-  - **面试评价记录**：`is_status_change=false`，`position_id` 非空，填写 rating、interview_date 等字段
-  - **状态变更记录**：`is_status_change=true`，填写 new_status、comments（变更原因）
-  - **职位关联记录**：记录候选人与职位关联事件（系统自动创建，`interviewer` 可为NULL）
-  - **候选人级别记录**：`position_id` 为NULL，记录与职位无关的候选人事件
+- **v2.0 重大架构变更**：该表支持三种互斥的记录类型
+- **三种记录类型**（互斥）：
+  - **面试评价记录**：`interview_rating` 非空，`interviewer_type='user'`，记录人工面试评价
+  - **AI 评价记录**：`ai_rating` 非空，`interviewer_type='agent'`，记录 AI 面试评估
+  - **状态变更/日志记录**：`new_status` 非空，`interviewer_type` 可为 'user', 'agent', 'system'，记录状态变更或系统事件
+- **字段互斥约束**：`interview_rating`、`ai_rating`、`new_status` 三个字段只能有一个非空（应用层校验）
+- **interviewer 字段变更**：从 INTEGER 改为 UUID，无外键约束，支持引用 users 或未来的 agents 表
+- **必填字段**：candidate_id、interviewer、interviewer_type、interview_date、comments 均为必填
+- **position_id 可空**：支持候选人级别的记录（与职位无关的事件）
 - 按时间排序展示，形成完整的候选人处理时间线
 
 #### 2.3.3 候选人状态
@@ -332,20 +345,53 @@ Authorization: Bearer YOUR_SUPABASE_ANON_KEY
 
 #### 2.3.4 面试评价 API 示例
 
-**创建面试评价**
+**创建面试评价记录（v2.0）**
 ```http
-POST /rest/v1/interview_feedbacks
+POST /api/interview-feedbacks/
 Content-Type: application/json
-Authorization: Bearer YOUR_SUPABASE_ANON_KEY
+Authorization: Bearer YOUR_JWT_TOKEN
 
 {
   "candidate_id": 1,
   "position_id": 1,
-  "round": "一面",
-  "interviewer": "李工",
-  "rating": 4,
+  "interviewer": "12345678-1234-5678-1234-567812345678",  // UUID
+  "interviewer_type": "user",
+  "interview_rating": 4,
   "comments": "技术基础扎实，沟通能力良好，建议进入二面",
-  "interview_date": "2024-10-15"
+  "interview_date": "2025-01-27"
+}
+```
+
+**创建 AI 评价记录（v2.0 新增）**
+```http
+POST /api/interview-feedbacks/
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN
+
+{
+  "candidate_id": 1,
+  "position_id": 1,
+  "interviewer": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",  // AI agent UUID
+  "interviewer_type": "agent",
+  "ai_rating": 8,
+  "comments": "AI 面试评估：技术能力强，项目经验丰富",
+  "interview_date": "2025-01-27"
+}
+```
+
+**创建状态变更记录（v2.0）**
+```http
+POST /api/interview-feedbacks/status-change
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN
+
+{
+  "candidate_id": 1,
+  "position_id": 1,
+  "interviewer": "12345678-1234-5678-1234-567812345678",
+  "interviewer_type": "user",
+  "new_status": "interview",
+  "comments": "通过初筛，进入面试流程"
 }
 ```
 
@@ -407,20 +453,28 @@ CREATE TABLE position_candidates (
     UNIQUE(position_id, candidate_id)
 );
 
--- 面试评价表（执行记录表，扩展职能：面试评价、状态变更、职位关联）
--- v1.2 (2025-10-22): position_id 改为可空，支持候选人级别的记录
+-- 面试评价表（执行记录表，支持三种互斥的记录类型）
+-- v2.0 (2025-01-27): 重大重构，支持面试评价、AI评价、状态变更三种类型
 CREATE TABLE interview_feedbacks (
     id SERIAL PRIMARY KEY,
-    candidate_id INTEGER REFERENCES candidates(id) ON DELETE CASCADE,
-    position_id INTEGER REFERENCES positions(id) ON DELETE CASCADE,  -- v1.2: 可空，支持候选人级别记录
-    interviewer INTEGER REFERENCES users(id),  -- 面试官/操作人ID（可空，系统事件时为NULL）
-    rating INTEGER CHECK (rating >= 1 AND rating <= 4),  -- 面试评分（4分制），状态变更时可为NULL
-    comments TEXT,  -- 面试评价、状态变更原因、或系统事件描述
-    interview_date DATE,  -- 面试日期，状态变更时可为NULL
-    new_status VARCHAR(20),  -- 状态变更记录
-    is_status_change BOOLEAN DEFAULT false,  -- 标记是否为状态变更记录
-    is_deleted BOOLEAN DEFAULT false,  -- 软删除标记
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+    position_id INTEGER REFERENCES positions(id) ON DELETE CASCADE,  -- 可空，支持候选人级别记录
+
+    -- 评价者信息（必填，无外键约束以支持多种引用）
+    interviewer UUID NOT NULL,  -- 面试官/AI/系统操作者 UUID
+    interviewer_type VARCHAR(20) NOT NULL CHECK (interviewer_type IN ('user', 'agent', 'system')),
+
+    -- 核心字段（必填）
+    interview_date DATE NOT NULL,  -- 面试日期（非面试记录填 created_at 日期）
+    comments TEXT NOT NULL,  -- 评价内容、变更原因、或系统日志
+
+    -- 三种互斥的记录类型字段
+    interview_rating INTEGER CHECK (interview_rating >= 1 AND interview_rating <= 4),  -- 面试评分（4分制）
+    ai_rating INTEGER CHECK (ai_rating >= 1 AND ai_rating <= 10),  -- AI评分（10分制）
+    new_status VARCHAR(20) CHECK (new_status IN ('screening', 'interview', 'offer', 'hired', 'rejected', 'withdrawn')),  -- 状态变更
+
+    is_deleted BOOLEAN DEFAULT false NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- 用户表（第一阶段实现基础 CRUD，不做认证授权）
@@ -451,7 +505,8 @@ CREATE INDEX idx_position_candidates_is_deleted ON position_candidates(is_delete
 
 CREATE INDEX idx_interview_feedbacks_candidate ON interview_feedbacks(candidate_id);
 CREATE INDEX idx_interview_feedbacks_position ON interview_feedbacks(position_id);
-CREATE INDEX idx_interview_feedbacks_status_change ON interview_feedbacks(is_status_change);  -- 状态变更查询优化
+CREATE INDEX idx_interview_feedbacks_interviewer ON interview_feedbacks(interviewer);  -- 按评价者查询优化
+CREATE INDEX idx_interview_feedbacks_interviewer_type ON interview_feedbacks(interviewer_type);  -- 按评价者类型查询优化
 CREATE INDEX idx_interview_feedbacks_is_deleted ON interview_feedbacks(is_deleted);  -- 软删除查询优化
 
 CREATE INDEX idx_users_is_deleted ON users(is_deleted);  -- 软删除查询优化
