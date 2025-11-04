@@ -229,32 +229,57 @@ CREATE INDEX idx_position_candidates_updated_at ON position_candidates(updated_a
 
 -- ----------------------------------------------------------------------------
 -- Interview Feedbacks Table
--- Execution records: interview evaluations, status changes, and system events
+-- Unified table for interview evaluations, AI evaluations, and status/log records
+-- v2.0: Refactored to support three mutually exclusive record types
 -- ----------------------------------------------------------------------------
 CREATE TABLE interview_feedbacks (
+    -- Primary key
     id SERIAL PRIMARY KEY,
+
+    -- Relations (candidate_id required, position_id optional)
     candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
     position_id INTEGER REFERENCES positions(id) ON DELETE CASCADE,
-    interviewer UUID REFERENCES users(id),
-    rating INTEGER CHECK (rating >= 1 AND rating <= 4),
-    comments TEXT,
-    interview_date DATE,
-    new_status VARCHAR(20),
-    is_status_change BOOLEAN DEFAULT false,
-    is_deleted BOOLEAN DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+
+    -- Interviewer information (required, no FK constraint for flexibility)
+    interviewer UUID NOT NULL,
+    interviewer_type VARCHAR(20) NOT NULL CHECK (interviewer_type IN ('user', 'agent', 'system')),
+
+    -- Core fields (all required)
+    interview_date DATE NOT NULL,
+    comments TEXT NOT NULL,
+
+    -- Three mutually exclusive record types (only one should be non-NULL)
+    interview_rating INTEGER CHECK (interview_rating >= 1 AND interview_rating <= 4),
+    ai_rating INTEGER CHECK (ai_rating >= 1 AND ai_rating <= 10),
+    new_status VARCHAR(20) CHECK (new_status IN ('screening', 'interview', 'offer', 'hired', 'rejected', 'withdrawn')),
+
+    -- Metadata
+    is_deleted BOOLEAN DEFAULT false NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
-COMMENT ON TABLE interview_feedbacks IS 'Execution records: interview evaluations, status changes, and events';
-COMMENT ON COLUMN interview_feedbacks.interviewer IS 'Interviewer UUID (links to users table)';
+COMMENT ON TABLE interview_feedbacks IS 'Unified table for interview evaluations, AI evaluations, and status/log records (v2.0)';
+COMMENT ON COLUMN interview_feedbacks.candidate_id IS 'Candidate ID (required)';
+COMMENT ON COLUMN interview_feedbacks.position_id IS 'Position ID (optional for candidate-level records)';
+COMMENT ON COLUMN interview_feedbacks.interviewer IS 'Interviewer UUID (user/agent/system, no FK constraint)';
+COMMENT ON COLUMN interview_feedbacks.interviewer_type IS 'Type: user (human), agent (AI), system (automated)';
+COMMENT ON COLUMN interview_feedbacks.interview_date IS 'Interview date for evaluations, or created_at date for logs';
+COMMENT ON COLUMN interview_feedbacks.comments IS 'Feedback content or log description (required)';
+COMMENT ON COLUMN interview_feedbacks.interview_rating IS 'Human interview rating (1-4 scale, mutually exclusive)';
+COMMENT ON COLUMN interview_feedbacks.ai_rating IS 'AI evaluation rating (1-10 scale, mutually exclusive)';
+COMMENT ON COLUMN interview_feedbacks.new_status IS 'Status for status change records (mutually exclusive)';
 
 -- Interview Feedbacks indexes
 CREATE INDEX idx_interview_feedbacks_candidate ON interview_feedbacks(candidate_id);
 CREATE INDEX idx_interview_feedbacks_position ON interview_feedbacks(position_id);
 CREATE INDEX idx_interview_feedbacks_interviewer ON interview_feedbacks(interviewer);
-CREATE INDEX idx_interview_feedbacks_status_change ON interview_feedbacks(is_status_change);
+CREATE INDEX idx_interview_feedbacks_interviewer_type ON interview_feedbacks(interviewer_type);
 CREATE INDEX idx_interview_feedbacks_is_deleted ON interview_feedbacks(is_deleted);
-CREATE INDEX idx_interview_feedbacks_created_at ON interview_feedbacks(created_at);
+CREATE INDEX idx_interview_feedbacks_created_at ON interview_feedbacks(created_at DESC);
+CREATE INDEX idx_interview_feedbacks_interview_date ON interview_feedbacks(interview_date DESC);
+
+-- Composite index for common query: get feedbacks by candidate and position
+CREATE INDEX idx_interview_feedbacks_candidate_position ON interview_feedbacks(candidate_id, position_id);
 
 
 -- ============================================================================
