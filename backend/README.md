@@ -318,14 +318,19 @@ Authorization: Bearer <your-jwt-token>
 ```
 
 #### `POST /api/auth/register` - Register New User
-Register a new user account with Supabase Auth.
+Register a new user account with Supabase Auth. The user can either create a personal organization (default) or join an existing organization.
+
+**Two Registration Paths**:
+1. **Create Personal Organization** (Default): User automatically gets a personal organization with admin role
+2. **Join Existing Organization**: User requests to join an organization (pending approval)
 
 **Request Body**:
 ```json
 {
   "email": "user@example.com",
   "password": "SecurePass123!",
-  "name": "John Doe"
+  "name": "John Doe",
+  "org_id": "uuid-string"  // Optional: organization to join
 }
 ```
 
@@ -336,19 +341,32 @@ Register a new user account with Supabase Auth.
     "id": "uuid-string",
     "email": "user@example.com",
     "name": "John Doe",
+    "current_org_id": "uuid-string",  // Personal organization ID (if created)
     "created_at": "2025-10-30T10:00:00Z"
   },
-  "session": {
+  "token": {
     "access_token": "jwt-token-here",
-    "refresh_token": "refresh-token-here",
-    "expires_at": "2025-10-30T11:00:00Z"
+    "token_type": "bearer",
+    "expires_in": 86400,  // seconds (24 hours)
+    "refresh_token": "refresh-token-here"
   }
 }
 ```
 
+**Organization Creation Details**:
+- When `org_id` is **not provided** (default):
+  - Creates a personal organization named "{Name}的组织"
+  - Generates a unique 6-digit organization code
+  - User is added as organization admin
+  - `current_org_id` is set to the new organization
+- When `org_id` is **provided**:
+  - Verifies organization exists
+  - Creates join request with `interviewer` role (pending approval)
+  - `current_org_id` remains null until approved
+
 **Status Codes**:
-- `200`: Registration successful
-- `400`: Validation error (email already exists, weak password, etc.)
+- `201`: Registration successful
+- `400`: Validation error (email already exists, weak password, invalid org_id)
 - `500`: Server error
 
 **Example**:
