@@ -6,8 +6,10 @@
  * - Support three record types: interview, ai, status
  * - interviewer field changed from number to UUID string
  * - Added record_type filtering
+ * - FIXED: Use apiClient instead of fetch for authentication
  */
 
+import { apiClient } from './auth.service'
 import type {
   InterviewFeedback,
   PaginatedResponse,
@@ -16,10 +18,7 @@ import type {
   CreateAIEvaluationRequest,
   CreateStatusChangeRequest,
   UpdateInterviewFeedbackRequest,
-  FeedbackQueryParams,
 } from '@/types'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 /**
  * Get all execution records for a candidate (across all positions)
@@ -46,12 +45,10 @@ export async function getCandidateExecutionRecords(
     searchParams.append('record_type', recordType)
   }
 
-  const response = await fetch(
-    `${API_BASE}/api/interview-feedbacks/candidate/${candidateId}?${searchParams}`
+  const response = await apiClient.get(
+    `/api/interview-feedbacks/candidate/${candidateId}?${searchParams}`
   )
-  if (!response.ok) throw new Error('Failed to fetch execution records')
-
-  const data = await response.json()
+  const data = response.data
 
   return {
     data: data.feedbacks,
@@ -91,10 +88,8 @@ export async function getInterviewFeedbacks(
     searchParams.append('record_type', recordType)
   }
 
-  const response = await fetch(`${API_BASE}/api/interview-feedbacks/?${searchParams}`)
-  if (!response.ok) throw new Error('Failed to fetch interview feedbacks')
-
-  const data = await response.json()
+  const response = await apiClient.get(`/api/interview-feedbacks/?${searchParams}`)
+  const data = response.data
 
   return {
     data: data.feedbacks,
@@ -110,12 +105,8 @@ export async function getInterviewFeedbacks(
  * 根据 ID 获取反馈详情
  */
 export async function getInterviewFeedback(id: number): Promise<InterviewFeedback> {
-  const response = await fetch(`${API_BASE}/api/interview-feedbacks/${id}`)
-  if (!response.ok) {
-    if (response.status === 404) throw new Error('Feedback not found')
-    throw new Error('Failed to fetch feedback')
-  }
-  return response.json()
+  const response = await apiClient.get(`/api/interview-feedbacks/${id}`)
+  return response.data
 }
 
 /**
@@ -136,12 +127,10 @@ export async function getInterviewFeedbacksByInterviewer(
     offset: String(offset),
   })
 
-  const response = await fetch(
-    `${API_BASE}/api/interview-feedbacks/interviewer/${interviewerId}?${searchParams}`
+  const response = await apiClient.get(
+    `/api/interview-feedbacks/interviewer/${interviewerId}?${searchParams}`
   )
-  if (!response.ok) throw new Error('Failed to fetch interviewer feedbacks')
-
-  const data = await response.json()
+  const data = response.data
 
   return {
     data: data.feedbacks,
@@ -159,16 +148,8 @@ export async function getInterviewFeedbacksByInterviewer(
 export async function createInterviewFeedback(
   data: CreateInterviewFeedbackRequest
 ): Promise<InterviewFeedback> {
-  const response = await fetch(`${API_BASE}/api/interview-feedbacks/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) {
-    if (response.status === 400) throw new Error('Validation error')
-    throw new Error('Failed to create interview feedback')
-  }
-  return response.json()
+  const response = await apiClient.post(`/api/interview-feedbacks/`, data)
+  return response.data
 }
 
 /**
@@ -181,16 +162,8 @@ export async function createInterviewFeedback(
 export async function createStatusChange(
   data: CreateStatusChangeRequest
 ): Promise<InterviewFeedback> {
-  const response = await fetch(`${API_BASE}/api/interview-feedbacks/status-change`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) {
-    if (response.status === 400) throw new Error('Validation error')
-    throw new Error('Failed to create status change')
-  }
-  return response.json()
+  const response = await apiClient.post(`/api/interview-feedbacks/status-change`, data)
+  return response.data
 }
 
 /**
@@ -209,16 +182,8 @@ export async function createInterviewEvaluation(
     interviewer_type: data.interviewer_type || 'user',
   }
 
-  const response = await fetch(`${API_BASE}/api/interview-feedbacks/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestData),
-  })
-  if (!response.ok) {
-    if (response.status === 400) throw new Error('Validation error')
-    throw new Error('Failed to create interview evaluation')
-  }
-  return response.json()
+  const response = await apiClient.post(`/api/interview-feedbacks/`, requestData)
+  return response.data
 }
 
 /**
@@ -237,16 +202,8 @@ export async function createAIEvaluation(
     interviewer_type: data.interviewer_type || 'agent',
   }
 
-  const response = await fetch(`${API_BASE}/api/interview-feedbacks/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestData),
-  })
-  if (!response.ok) {
-    if (response.status === 400) throw new Error('Validation error')
-    throw new Error('Failed to create AI evaluation')
-  }
-  return response.json()
+  const response = await apiClient.post(`/api/interview-feedbacks/`, requestData)
+  return response.data
 }
 
 /**
@@ -257,15 +214,6 @@ export async function updateInterviewFeedback(
   id: number,
   data: UpdateInterviewFeedbackRequest
 ): Promise<InterviewFeedback> {
-  const response = await fetch(`${API_BASE}/api/interview-feedbacks/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) {
-    if (response.status === 404) throw new Error('Feedback not found')
-    if (response.status === 400) throw new Error('Cannot edit status change record')
-    throw new Error('Failed to update interview feedback')
-  }
-  return response.json()
+  const response = await apiClient.patch(`/api/interview-feedbacks/${id}`, data)
+  return response.data
 }

@@ -35,7 +35,9 @@ class PositionCandidateService(BaseService[dict[str, Any]]):
         :param supabase: Supabase client instance
         :param org_id: Organization ID for data isolation (optional)
         """
-        super().__init__(supabase, "position_candidates", org_id=org_id)
+        # Disable auto-injection of org_id because position_candidates table doesn't have org_id column
+        # (it uses RLS via positions table for organization isolation)
+        super().__init__(supabase, "position_candidates", org_id=org_id, auto_inject_org_id=False)
         # Import here to avoid circular import
         from app.services.interview_feedback_service import InterviewFeedbackService
 
@@ -122,7 +124,12 @@ class PositionCandidateService(BaseService[dict[str, Any]]):
         }
 
         try:
-            association = self.create(data)
+            # Create association directly without org_id injection
+            # NOTE: position_candidates table does not have org_id column (MVP phase)
+            response: APIResponse = (
+                self.supabase.table(self.table_name).insert(data).execute()
+            )
+            association = response.data[0]
             logger.info(f"Association created successfully: {association.get('id')}")
 
             # Auto-create execution record for this association event

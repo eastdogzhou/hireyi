@@ -10,7 +10,7 @@ import { SelectDropdown, type SelectOption } from '@/ui/components/common/Select
 import { Button } from '@/ui/components/common/Button'
 import { Star, MessageSquare, GitBranch } from 'lucide-react'
 import { useCreateInterviewEvaluation, useCreateStatusChange } from '@/hooks/api/useInterviewFeedbacks'
-import { useAuth } from '@/hooks/useAuth' // v2.0: 获取当前用户 UUID
+import { useAuth } from '@/contexts/AuthContext' // v2.0: 获取当前用户信息
 
 interface AddRecordModalProps {
   open: boolean
@@ -114,9 +114,9 @@ export function AddRecordModal({ open, onClose, candidateId, positionId, onSucce
           position_id: positionId,
           interviewer: user.id, // v2.0: UUID (不再是数字)
           interviewer_type: 'user', // v2.0: 新增字段
-          interview_rating: rating, // v2.0: interview_rating (不再是 rating)
-          comments: comments || undefined,
-          interview_date: interviewDate || undefined,
+          interview_rating: rating as 1 | 2 | 3 | 4, // v2.0: interview_rating (不再是 rating)
+          comments: comments || '无',
+          interview_date: interviewDate || new Date().toISOString().split('T')[0],
         })
         alert('面试评价添加成功')
         onSuccess?.()
@@ -143,7 +143,7 @@ export function AddRecordModal({ open, onClose, candidateId, positionId, onSucce
           position_id: positionId,
           interviewer: user.id, // v2.0: UUID (不再是数字)
           interviewer_type: 'user', // v2.0: 新增字段
-          new_status: newStatus,
+          new_status: newStatus as 'screening' | 'interview' | 'offer' | 'hired' | 'rejected' | 'withdrawn',
           comments: statusReason,
         })
         alert('状态变更添加成功')

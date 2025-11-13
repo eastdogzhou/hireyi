@@ -83,7 +83,7 @@ async def create_interview_feedback(
         feedback_service = get_interview_feedback_service(org_id=current_user.org_id)
 
         # Auto-fill interview_date if not provided
-        data = feedback_data.model_dump()
+        data = feedback_data.model_dump(mode='json')  # Use json mode to serialize UUID to string
         if data.get("interview_date") is None:
             from datetime import UTC, datetime
             data["interview_date"] = datetime.now(UTC).date().isoformat()
@@ -133,15 +133,19 @@ async def create_status_change(
     )
 
     try:
-
-
         feedback_service = get_interview_feedback_service(org_id=current_user.org_id)
         # Convert to InterviewFeedbackCreate
         feedback_data = status_change_data.to_feedback_create()
 
+        # Auto-fill interview_date if not provided
+        data = feedback_data.model_dump(mode='json')  # Use json mode to serialize UUID to string
+        if data.get("interview_date") is None:
+            from datetime import UTC, datetime
+            data["interview_date"] = datetime.now(UTC).date().isoformat()
+
         record = await run_in_threadpool(
             feedback_service.create,
-            feedback_data.model_dump(),
+            data,
         )
         logger.info(f"Status change record created: {record['id']}")
         return InterviewFeedbackResponse(**record)
