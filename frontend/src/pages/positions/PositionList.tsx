@@ -191,7 +191,7 @@ export default function PositionList() {
       </div>
 
       {/* Search and Filter */}
-      <Card>
+      <Card overflowVisible>
         <div className="p-4 flex flex-wrap gap-3">
           <div className="flex-1 min-w-[300px]">
             <SearchBar

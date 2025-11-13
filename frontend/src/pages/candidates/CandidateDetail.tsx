@@ -53,7 +53,8 @@ export default function CandidateDetail() {
     refetch: refetchRecords,
   } = useCandidateExecutionRecords(
     candidateId,
-    true // include status changes
+    undefined, // Get all types of records (interview, ai, status)
+    true // enabled
   )
 
   // Handle loading state

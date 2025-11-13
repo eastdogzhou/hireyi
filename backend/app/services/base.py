@@ -21,16 +21,21 @@ class BaseService(Generic[T]):
         supabase: Client,
         table_name: str,
         org_id: str | None = None,
+        *,
+        auto_inject_org_id: bool = True,
     ):
         """Initialize base service.
 
         :param supabase: Supabase client instance.
         :param table_name: Name of the database table.
         :param org_id: Optional organization ID for data isolation.
+        :param auto_inject_org_id: Whether to automatically inject org_id on create (default: True).
+                                    Set to False for tables without org_id column (e.g., interview_feedbacks).
         """
         self.supabase = supabase
         self.table_name = table_name
         self.org_id = org_id
+        self._auto_inject_org_id = auto_inject_org_id
 
     def _get_active_query(
         self,
@@ -56,8 +61,8 @@ class BaseService(Generic[T]):
         # Apply soft delete filter
         query = query.eq("is_deleted", False)
 
-        # Apply org_id filter if set (for multi-tenant data isolation)
-        if self.org_id is not None:
+        # Apply org_id filter if set AND table has org_id column (for multi-tenant data isolation)
+        if self.org_id is not None and self._auto_inject_org_id:
             query = query.eq("org_id", self.org_id)
 
         return query
@@ -113,8 +118,8 @@ class BaseService(Generic[T]):
         :param data: Record data to create.
         :return: Created record data.
         """
-        # Inject org_id if service is scoped to an organization
-        if self.org_id is not None:
+        # Inject org_id if service is scoped to an organization AND auto-injection is enabled
+        if self.org_id is not None and self._auto_inject_org_id:
             data["org_id"] = self.org_id
 
         response: APIResponse = (
@@ -141,8 +146,8 @@ class BaseService(Generic[T]):
             .eq("is_deleted", False)
         )
 
-        # Apply org_id filter if set (ensures user can only update their org's data)
-        if self.org_id is not None:
+        # Apply org_id filter if set AND table has org_id column (ensures user can only update their org's data)
+        if self.org_id is not None and self._auto_inject_org_id:
             query = query.eq("org_id", self.org_id)
 
         response: APIResponse = query.execute()
@@ -172,8 +177,8 @@ class BaseService(Generic[T]):
             .eq("is_deleted", False)
         )
 
-        # Apply org_id filter if set (ensures user can only delete their org's data)
-        if self.org_id is not None:
+        # Apply org_id filter if set AND table has org_id column (ensures user can only delete their org's data)
+        if self.org_id is not None and self._auto_inject_org_id:
             query = query.eq("org_id", self.org_id)
 
         response: APIResponse = query.execute()
