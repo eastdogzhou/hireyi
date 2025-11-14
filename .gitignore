@@ -64,3 +64,6 @@ test_*.js
 
 # Reference (deprecated)
 reference/
+/frontend/playwright-report
+/frontend/playwright-report
+/frontend/test-results
