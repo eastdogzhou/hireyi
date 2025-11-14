@@ -68,15 +68,79 @@ class AuthService:
                 # This would require admin API or SQL trigger
                 raise ValueError("Failed to create user profile")
 
-            # Step 3: Handle organization if provided
+            # Step 3: Handle organization
+            org_id = None
+            org_name = None
+
             if request.org_id:
-                # Create join request (pending role)
+                # Option A: Join existing organization (pending approval)
+                logger.info(f"User {user_id} requesting to join organization {request.org_id}")
+
+                # Verify organization exists
+                org_check = (
+                    self.supabase.table("organizations")
+                    .select("id, name")
+                    .eq("id", request.org_id)
+                    .execute()
+                )
+
+                if not org_check.data:
+                    raise ValueError(f"Organization {request.org_id} not found")
+
+                org_id = request.org_id
+                org_name = org_check.data[0]["name"]
+
+                # Create join request (member role)
+                # Note: Current DB schema doesn't have 'status' column
+                #       Using 'interviewer' role to indicate pending approval
                 member_data = {
-                    "org_id": request.org_id,
+                    "org_id": org_id,
                     "user_id": user_id,
-                    "role": "pending",  # Awaiting approval
+                    "role": "interviewer",  # Temporary: use 'interviewer' for pending members
                 }
                 self.supabase.table("org_members").insert(member_data).execute()
+                logger.info(f"Join request created for user {user_id} to org {org_id} (role: interviewer/pending)")
+
+            else:
+                # Option B: Create personal organization (default)
+                logger.info(f"Creating personal organization for user {user_id}")
+
+                # Generate 6-digit org code
+                import random
+                import string
+                org_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+                # Create organization
+                org_data = {
+                    "name": f"{request.name}的组织",  # "{User's Name}'s Organization"
+                    "org_code": org_code,
+                    "created_by": user_id,
+                }
+
+                org_response = self.supabase.table("organizations").insert(org_data).execute()
+
+                if not org_response.data:
+                    raise ValueError("Failed to create organization")
+
+                org_id = org_response.data[0]["id"]
+                org_name = org_response.data[0]["name"]
+                logger.info(f"Created organization {org_id} ({org_name}) with code {org_code}")
+
+                # Add user as admin
+                # Note: Current DB schema doesn't have 'status' column
+                member_data = {
+                    "org_id": org_id,
+                    "user_id": user_id,
+                    "role": "admin",  # Creator is admin
+                    "approved_at": datetime.now(UTC).isoformat(),
+                    "approved_by": user_id,  # Self-approved
+                }
+                self.supabase.table("org_members").insert(member_data).execute()
+                logger.info(f"Added user {user_id} as admin of org {org_id}")
+
+                # Update user's current_org_id
+                self.supabase.table("users").update({"current_org_id": org_id}).eq("id", user_id).execute()
+                logger.info(f"Set user {user_id}'s current_org_id to {org_id}")
 
             # Step 4: Generate tokens
             access_token = self._create_access_token(user_id, request.email)
@@ -91,12 +155,18 @@ class AuthService:
                 else None,
             )
 
+            # Return user profile with organization info
             user_profile = UserProfile(
                 id=user_id,
                 email=request.email,
                 name=request.name,
-                current_org_id=None,
+                current_org_id=org_id,  # Set to created/joined org
                 created_at=datetime.now(UTC),
+            )
+
+            logger.info(
+                f"Registration successful for {request.email}, "
+                f"org_id={org_id}, org_name={org_name}"
             )
 
             return auth_token, user_profile

@@ -36,7 +36,9 @@ class InterviewFeedbackService(BaseService[dict[str, Any]]):
         :param supabase: Supabase client instance
         :param org_id: Organization ID for data isolation (optional)
         """
-        super().__init__(supabase, "interview_feedbacks", org_id=org_id)
+        # Disable auto-injection of org_id because interview_feedbacks table doesn't have org_id column
+        # (it uses RLS via candidates table for organization isolation)
+        super().__init__(supabase, "interview_feedbacks", org_id=org_id, auto_inject_org_id=False)
         logger.info(
             f"InterviewFeedbackService v2.0 initialized"
             f"{' with org_id=' + org_id if org_id else ''}"

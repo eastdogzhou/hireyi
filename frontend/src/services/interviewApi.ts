@@ -1,39 +1,54 @@
 /**
- * Interview Feedback API Service
+ * Interview Feedback API Service (v2.0)
  * 面试反馈 API 服务层
+ *
+ * v2.0 Changes:
+ * - Support three record types: interview, ai, status
+ * - interviewer field changed from number to UUID string
+ * - Added record_type filtering
+ * - FIXED: Use apiClient instead of fetch for authentication
  */
 
+import { apiClient } from './auth.service'
 import type {
   InterviewFeedback,
   PaginatedResponse,
   CreateInterviewFeedbackRequest,
+  CreateInterviewEvaluationRequest,
+  CreateAIEvaluationRequest,
+  CreateStatusChangeRequest,
   UpdateInterviewFeedbackRequest,
 } from '@/types'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 
 /**
  * Get all execution records for a candidate (across all positions)
  * 获取候选人的所有执行记录（跨所有职位）
+ *
+ * @param candidateId - Candidate ID
+ * @param recordType - Filter by type: 'interview', 'ai', 'status', or undefined (all)
+ * @param limit - Maximum number of results
+ * @param offset - Number of records to skip
  */
 export async function getCandidateExecutionRecords(
   candidateId: number,
-  includeStatusChanges = true,
+  recordType?: 'interview' | 'ai' | 'status',
   limit = 100,
   offset = 0
 ): Promise<PaginatedResponse<InterviewFeedback>> {
   const searchParams = new URLSearchParams({
-    include_status_changes: String(includeStatusChanges),
     limit: String(limit),
     offset: String(offset),
   })
 
-  const response = await fetch(
-    `${API_BASE}/api/interview-feedbacks/candidate/${candidateId}?${searchParams}`
-  )
-  if (!response.ok) throw new Error('Failed to fetch execution records')
+  // v2.0: Use record_type instead of include_status_changes
+  if (recordType) {
+    searchParams.append('record_type', recordType)
+  }
 
-  const data = await response.json()
+  const response = await apiClient.get(
+    `/api/interview-feedbacks/candidate/${candidateId}?${searchParams}`
+  )
+  const data = response.data
 
   return {
     data: data.feedbacks,
@@ -47,26 +62,34 @@ export async function getCandidateExecutionRecords(
 /**
  * Get all feedback records for a candidate-position pair
  * 获取候选人-职位的所有反馈记录
+ *
+ * @param candidateId - Candidate ID
+ * @param positionId - Position ID
+ * @param recordType - Filter by type: 'interview', 'ai', 'status', or undefined (all)
+ * @param limit - Maximum number of results
+ * @param offset - Number of records to skip
  */
 export async function getInterviewFeedbacks(
   candidateId: number,
   positionId: number,
-  includeStatusChanges = true,
+  recordType?: 'interview' | 'ai' | 'status',
   limit = 100,
   offset = 0
 ): Promise<PaginatedResponse<InterviewFeedback>> {
   const searchParams = new URLSearchParams({
     candidate_id: String(candidateId),
     position_id: String(positionId),
-    include_status_changes: String(includeStatusChanges),
     limit: String(limit),
     offset: String(offset),
   })
 
-  const response = await fetch(`${API_BASE}/api/interview-feedbacks/?${searchParams}`)
-  if (!response.ok) throw new Error('Failed to fetch interview feedbacks')
+  // v2.0: Use record_type instead of include_status_changes
+  if (recordType) {
+    searchParams.append('record_type', recordType)
+  }
 
-  const data = await response.json()
+  const response = await apiClient.get(`/api/interview-feedbacks/?${searchParams}`)
+  const data = response.data
 
   return {
     data: data.feedbacks,
@@ -82,20 +105,20 @@ export async function getInterviewFeedbacks(
  * 根据 ID 获取反馈详情
  */
 export async function getInterviewFeedback(id: number): Promise<InterviewFeedback> {
-  const response = await fetch(`${API_BASE}/api/interview-feedbacks/${id}`)
-  if (!response.ok) {
-    if (response.status === 404) throw new Error('Feedback not found')
-    throw new Error('Failed to fetch feedback')
-  }
-  return response.json()
+  const response = await apiClient.get(`/api/interview-feedbacks/${id}`)
+  return response.data
 }
 
 /**
  * Get all feedbacks by interviewer
  * 根据面试官获取所有反馈
+ *
+ * @param interviewerId - Interviewer UUID (v2.0: changed from number to string)
+ * @param limit - Maximum number of results
+ * @param offset - Number of records to skip
  */
 export async function getInterviewFeedbacksByInterviewer(
-  interviewerId: number,
+  interviewerId: string,  // v2.0: UUID string instead of number
   limit = 100,
   offset = 0
 ): Promise<PaginatedResponse<InterviewFeedback>> {
@@ -104,12 +127,10 @@ export async function getInterviewFeedbacksByInterviewer(
     offset: String(offset),
   })
 
-  const response = await fetch(
-    `${API_BASE}/api/interview-feedbacks/interviewer/${interviewerId}?${searchParams}`
+  const response = await apiClient.get(
+    `/api/interview-feedbacks/interviewer/${interviewerId}?${searchParams}`
   )
-  if (!response.ok) throw new Error('Failed to fetch interviewer feedbacks')
-
-  const data = await response.json()
+  const data = response.data
 
   return {
     data: data.feedbacks,
@@ -127,39 +148,62 @@ export async function getInterviewFeedbacksByInterviewer(
 export async function createInterviewFeedback(
   data: CreateInterviewFeedbackRequest
 ): Promise<InterviewFeedback> {
-  const response = await fetch(`${API_BASE}/api/interview-feedbacks/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) {
-    if (response.status === 400) throw new Error('Validation error')
-    throw new Error('Failed to create interview feedback')
-  }
-  return response.json()
+  const response = await apiClient.post(`/api/interview-feedbacks/`, data)
+  return response.data
 }
 
 /**
- * Create status change record
+ * Create status change record (v2.0)
  * 创建状态变更记录
+ *
+ * @param data - Status change data
+ * @returns Created interview feedback record
  */
-export async function createStatusChange(data: {
-  candidate_id: number
-  position_id?: number  // Optional: allows candidate-level status changes
-  interviewer: number
-  new_status: string
-  comments: string  // Changed from 'reason' to match backend API
-}): Promise<InterviewFeedback> {
-  const response = await fetch(`${API_BASE}/api/interview-feedbacks/status-change`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) {
-    if (response.status === 400) throw new Error('Validation error')
-    throw new Error('Failed to create status change')
+export async function createStatusChange(
+  data: CreateStatusChangeRequest
+): Promise<InterviewFeedback> {
+  const response = await apiClient.post(`/api/interview-feedbacks/status-change`, data)
+  return response.data
+}
+
+/**
+ * Create interview evaluation (v2.0 - Convenience)
+ * 创建面试评价（便捷方法）
+ *
+ * @param data - Interview evaluation data
+ * @returns Created interview feedback record
+ */
+export async function createInterviewEvaluation(
+  data: CreateInterviewEvaluationRequest
+): Promise<InterviewFeedback> {
+  // Convert to generic CreateInterviewFeedbackRequest
+  const requestData: CreateInterviewFeedbackRequest = {
+    ...data,
+    interviewer_type: data.interviewer_type || 'user',
   }
-  return response.json()
+
+  const response = await apiClient.post(`/api/interview-feedbacks/`, requestData)
+  return response.data
+}
+
+/**
+ * Create AI evaluation (v2.0 - Convenience)
+ * 创建 AI 评价（便捷方法）
+ *
+ * @param data - AI evaluation data
+ * @returns Created interview feedback record
+ */
+export async function createAIEvaluation(
+  data: CreateAIEvaluationRequest
+): Promise<InterviewFeedback> {
+  // Convert to generic CreateInterviewFeedbackRequest
+  const requestData: CreateInterviewFeedbackRequest = {
+    ...data,
+    interviewer_type: data.interviewer_type || 'agent',
+  }
+
+  const response = await apiClient.post(`/api/interview-feedbacks/`, requestData)
+  return response.data
 }
 
 /**
@@ -170,15 +214,6 @@ export async function updateInterviewFeedback(
   id: number,
   data: UpdateInterviewFeedbackRequest
 ): Promise<InterviewFeedback> {
-  const response = await fetch(`${API_BASE}/api/interview-feedbacks/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!response.ok) {
-    if (response.status === 404) throw new Error('Feedback not found')
-    if (response.status === 400) throw new Error('Cannot edit status change record')
-    throw new Error('Failed to update interview feedback')
-  }
-  return response.json()
+  const response = await apiClient.patch(`/api/interview-feedbacks/${id}`, data)
+  return response.data
 }

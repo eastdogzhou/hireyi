@@ -9,7 +9,8 @@ import { Tabs, type TabItem } from '@/ui/components/common/Tabs'
 import { SelectDropdown, type SelectOption } from '@/ui/components/common/SelectDropdown'
 import { Button } from '@/ui/components/common/Button'
 import { Star, MessageSquare, GitBranch } from 'lucide-react'
-import { useCreateInterviewFeedback, useCreateStatusChange } from '@/hooks/api/useInterviewFeedbacks'
+import { useCreateInterviewEvaluation, useCreateStatusChange } from '@/hooks/api/useInterviewFeedbacks'
+import { useAuth } from '@/contexts/AuthContext' // v2.0: 获取当前用户信息
 
 interface AddRecordModalProps {
   open: boolean
@@ -63,7 +64,10 @@ const RatingSelector = ({ value, onChange }: { value: number; onChange: (rating:
 export function AddRecordModal({ open, onClose, candidateId, positionId, onSuccess }: AddRecordModalProps) {
   const [activeTab, setActiveTab] = useState<'interview' | 'status'>('interview')
 
-  // 面试评价表单
+  // v2.0: 获取当前用户信息
+  const { user } = useAuth()
+
+  // 面试评价表单 (v2.0: interview_rating 1-4)
   const [rating, setRating] = useState(0)
   const [comments, setComments] = useState('')
   const [interviewDate, setInterviewDate] = useState('')
@@ -72,7 +76,8 @@ export function AddRecordModal({ open, onClose, candidateId, positionId, onSucce
   const [newStatus, setNewStatus] = useState<string>('')
   const [statusReason, setStatusReason] = useState('')
 
-  const createInterviewFeedback = useCreateInterviewFeedback()
+  // v2.0: 使用新的 hook 名称
+  const createInterviewFeedback = useCreateInterviewEvaluation()
   const createStatusChange = useCreateStatusChange()
 
   const resetForm = () => {
@@ -89,6 +94,12 @@ export function AddRecordModal({ open, onClose, candidateId, positionId, onSucce
   }
 
   const handleSubmit = async () => {
+    // v2.0: 检查用户是否已登录
+    if (!user?.id) {
+      alert('请先登录')
+      return
+    }
+
     if (activeTab === 'interview') {
       // 验证面试评价表单
       if (rating === 0) {
@@ -97,13 +108,15 @@ export function AddRecordModal({ open, onClose, candidateId, positionId, onSucce
       }
 
       try {
+        // v2.0: 使用新的字段名和类型
         await createInterviewFeedback.mutateAsync({
           candidate_id: candidateId,
           position_id: positionId,
-          interviewer: 1, // MVP: 硬编码为 1
-          rating,
-          comments: comments || undefined,
-          interview_date: interviewDate || undefined,
+          interviewer: user.id, // v2.0: UUID (不再是数字)
+          interviewer_type: 'user', // v2.0: 新增字段
+          interview_rating: rating as 1 | 2 | 3 | 4, // v2.0: interview_rating (不再是 rating)
+          comments: comments || '无',
+          interview_date: interviewDate || new Date().toISOString().split('T')[0],
         })
         alert('面试评价添加成功')
         onSuccess?.()
@@ -124,11 +137,13 @@ export function AddRecordModal({ open, onClose, candidateId, positionId, onSucce
       }
 
       try {
+        // v2.0: 使用新的字段类型
         await createStatusChange.mutateAsync({
           candidate_id: candidateId,
           position_id: positionId,
-          interviewer: 1, // MVP: 硬编码为 1
-          new_status: newStatus,
+          interviewer: user.id, // v2.0: UUID (不再是数字)
+          interviewer_type: 'user', // v2.0: 新增字段
+          new_status: newStatus as 'screening' | 'interview' | 'offer' | 'hired' | 'rejected' | 'withdrawn',
           comments: statusReason,
         })
         alert('状态变更添加成功')

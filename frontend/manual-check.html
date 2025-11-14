@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>手动检查UI修复</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section {
+            margin-bottom: 40px;
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .section h2 {
+            color: #ff6600;
+            margin-top: 0;
+        }
+        .instruction {
+            background: #f5f5f5;
+            padding: 15px;
+            border-left: 4px solid #ff6600;
+            margin: 15px 0;
+        }
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+        .checklist li {
+            padding: 10px;
+            margin: 5px 0;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+        .checklist li::before {
+            content: "☐ ";
+            color: #ff6600;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 UI修复手动检查清单</h1>
+
+    <div class="section">
+        <h2>问题 3.1: PositionDetail - 下拉框字体大小一致性</h2>
+        <div class="instruction">
+            <strong>检查步骤：</strong>
+            <ol>
+                <li>打开浏览器访问：<a href="http://localhost:5173" target="_blank">http://localhost:5173</a></li>
+                <li>登录系统</li>
+                <li>进入"职位管理"页面</li>
+                <li>点击任意职位进入详情页</li>
+                <li>滚动到"候选人管理"区域</li>
+                <li>点击"状态筛选"下拉框，观察下拉菜单中的文字大小</li>
+                <li>关闭下拉框，点击"排序方式"下拉框，观察下拉菜单中的文字大小</li>
+                <li>对比两个下拉框内选项的字体大小是否一致</li>
+            </ol>
+        </div>
+        <ul class="checklist">
+            <li>状态筛选下拉框能正常打开</li>
+            <li>排序方式下拉框能正常打开</li>
+            <li>两个下拉框内选项的字体大小一致</li>
+            <li>下拉框触发按钮的字体大小一致</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>问题 3.2: PositionDetail - 上传简历关联到职位</h2>
+        <div class="instruction">
+            <strong>检查步骤：</strong>
+            <ol>
+                <li>在职位详情页，点击"上传简历"按钮</li>
+                <li>上传一份测试简历</li>
+                <li>观察上传成功后，该候选人是否自动出现在当前职位的候选人列表中</li>
+                <li>检查 Network 面板，确认上传API请求URL中包含 position_id 参数</li>
+            </ol>
+        </div>
+        <ul class="checklist">
+            <li>上传简历模态框可以打开</li>
+            <li>可以选择并上传PDF文件</li>
+            <li>上传API URL包含 position_id 参数（如：/api/candidates/batch-upload?position_id=1）</li>
+            <li>上传成功后，候选人出现在当前职位的候选人列表中</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>问题 4: Sidebar - 收起展开功能</h2>
+        <div class="instruction">
+            <strong>检查步骤：</strong>
+            <ol>
+                <li>在任意页面，观察左侧导航栏</li>
+                <li>找到导航栏右上角的折叠按钮（左箭头图标）</li>
+                <li>点击折叠按钮，观察导航栏是否收起</li>
+                <li>收起后，观察导航栏宽度变化、文字是否隐藏、图标是否居中</li>
+                <li>观察主内容区域宽度是否自动调整变宽</li>
+                <li>点击展开按钮（右箭头图标），观察导航栏是否展开</li>
+                <li>展开后，观察导航栏是否恢复到初始状态</li>
+            </ol>
+        </div>
+        <ul class="checklist">
+            <li>导航栏右上角有折叠/展开按钮</li>
+            <li>点击按钮后，导航栏宽度有平滑动画变化</li>
+            <li>收起时：导航栏变窄（约64px），文字隐藏，只显示图标</li>
+            <li>收起时：主内容区域宽度自动变宽</li>
+            <li>展开时：导航栏恢复宽度（约256px），文字和图标都显示</li>
+            <li>展开时：主内容区域宽度自动恢复</li>
+            <li>按钮图标会根据状态切换（左箭头 ↔ 右箭头）</li>
+        </ul>
+    </div>
+
+    <div class="section" style="background: #fff9e6;">
+        <h2>📝 测试结果记录</h2>
+        <textarea style="width: 100%; min-height: 200px; padding: 10px; font-family: monospace;"
+                  placeholder="请在这里记录测试结果和发现的问题...&#10;&#10;例如：&#10;- 问题3.1: ✅ 通过 / ❌ 失败 - 具体描述&#10;- 问题3.2: ✅ 通过 / ❌ 失败 - 具体描述&#10;- 问题4: ✅ 通过 / ❌ 失败 - 具体描述"></textarea>
+    </div>
+</body>
+</html>

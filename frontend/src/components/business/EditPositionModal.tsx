@@ -1,19 +1,25 @@
 /**
- * Create Position Modal
- * 创建职位模态框
+ * Edit Position Modal
+ * 编辑职位模态框
  */
 
-import { useState } from 'react'
-import { useCreatePosition } from '@/hooks/api'
+import { useState, useEffect } from 'react'
+import { useUpdatePosition } from '@/hooks/api'
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/ui/components/common/Modal'
 import { Button } from '@/ui/components/common/Button'
 import { Input } from '@/ui/components/common/Input'
+import type { Position } from '@/types'
 
-export interface CreatePositionModalProps {
+export interface EditPositionModalProps {
   /**
    * Modal open state
    */
   open: boolean
+
+  /**
+   * Position to edit
+   */
+  position: Position
 
   /**
    * Close handler
@@ -27,14 +33,15 @@ export interface CreatePositionModalProps {
 }
 
 /**
- * Create Position Modal Component
+ * Edit Position Modal Component
  */
-export const CreatePositionModal: React.FC<CreatePositionModalProps> = ({
+export const EditPositionModal: React.FC<EditPositionModalProps> = ({
   open,
+  position,
   onClose,
   onSuccess,
 }) => {
-  const createMutation = useCreatePosition()
+  const updateMutation = useUpdatePosition()
 
   // Form state
   const [formData, setFormData] = useState({
@@ -43,6 +50,18 @@ export const CreatePositionModal: React.FC<CreatePositionModalProps> = ({
     jd: '',
     salary_range: '',
   })
+
+  // Initialize form with position data when modal opens
+  useEffect(() => {
+    if (open && position) {
+      setFormData({
+        title: position.title || '',
+        department: position.department || '',
+        jd: position.jd || '',
+        salary_range: position.salary_range || '',
+      })
+    }
+  }, [open, position])
 
   // Handle field change
   const handleFieldChange = (field: string, value: string) => {
@@ -56,33 +75,28 @@ export const CreatePositionModal: React.FC<CreatePositionModalProps> = ({
         title: formData.title.trim(),
         department: formData.department.trim() || null,  // 空字符串转为 null
         jd: formData.jd.trim(),
-        requirements: null,  // 后端期望 dict 或 null，不是数组
+        salary_range: formData.salary_range.trim() || null,  // 空字符串转为 null
       }
 
-      await createMutation.mutateAsync(submitData)
+      await updateMutation.mutateAsync({
+        id: position.id,
+        data: submitData,
+      })
 
       // Success
-      alert('职位创建成功！')
+      alert('职位更新成功！')
       onSuccess?.()
       handleClose()
-
-      // Reset form
-      setFormData({
-        title: '',
-        department: '',
-        jd: '',
-        salary_range: '',
-      })
     } catch (error: any) {
-      console.error('Failed to create position:', error)
-      const errorMessage = error?.response?.data?.detail || error?.message || '创建失败，请重试'
-      alert(`创建职位失败: ${errorMessage}`)
+      console.error('Failed to update position:', error)
+      const errorMessage = error?.response?.data?.detail || error?.message || '更新失败，请重试'
+      alert(`更新职位失败: ${errorMessage}`)
     }
   }
 
   // Handle close
   const handleClose = () => {
-    if (!createMutation.isPending) {
+    if (!updateMutation.isPending) {
       onClose()
     }
   }
@@ -92,7 +106,7 @@ export const CreatePositionModal: React.FC<CreatePositionModalProps> = ({
 
   return (
     <Modal open={open} onClose={handleClose} size="lg">
-      <ModalHeader>新建职位</ModalHeader>
+      <ModalHeader>编辑职位</ModalHeader>
 
       <ModalBody>
         <div className="space-y-4">
@@ -141,17 +155,17 @@ export const CreatePositionModal: React.FC<CreatePositionModalProps> = ({
 
       <ModalFooter>
         <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={handleClose} disabled={createMutation.isPending}>
+          <Button variant="secondary" onClick={handleClose} disabled={updateMutation.isPending}>
             取消
           </Button>
 
           <Button
             variant="primary"
             onClick={handleSubmit}
-            disabled={createMutation.isPending || !isFormValid}
-            loading={createMutation.isPending}
+            disabled={updateMutation.isPending || !isFormValid}
+            loading={updateMutation.isPending}
           >
-            {createMutation.isPending ? '创建中...' : '创建职位'}
+            {updateMutation.isPending ? '更新中...' : '保存更改'}
           </Button>
         </div>
       </ModalFooter>
@@ -159,4 +173,4 @@ export const CreatePositionModal: React.FC<CreatePositionModalProps> = ({
   )
 }
 
-CreatePositionModal.displayName = 'CreatePositionModal'
+EditPositionModal.displayName = 'EditPositionModal'
