@@ -131,10 +131,13 @@ export const EditCandidateModal: React.FC<EditCandidateModalProps> = ({
       })
 
       // Success
+      alert('候选人信息更新成功！')
       onSuccess?.()
       onClose()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update candidate:', error)
+      const errorMessage = error?.response?.data?.detail || error?.message || '更新失败，请重试'
+      alert(`更新候选人失败: ${errorMessage}`)
     }
   }
 

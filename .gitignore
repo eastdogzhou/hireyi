@@ -64,3 +64,29 @@ test_*.js
 
 # Reference (deprecated)
 reference/
+
+# Playwright test artifacts
+frontend/e2e-screenshots/
+frontend/playwright-report/
+frontend/test-results/
+
+# Temporary debug documents
+*_FIX_*.md
+*_SUMMARY_*.md
+*_REPORT_*.md
+*_PROGRESS_*.md
+*_GUIDE_*.md
+
+# Temporary test scripts (root directory)
+/test_*.py
+/test_*.sh
+/check_*.py
+/verify_*.py
+/register_*.py
+/simple_*.py
+
+# Temporary test scripts (backend)
+backend/test_*.py
+backend/check_*.py
+backend/verify_*.py
+backend/final_*.py

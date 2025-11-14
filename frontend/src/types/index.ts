@@ -21,6 +21,11 @@ export type {
   InterviewRound,
   MemberStatus,
   MemberRole,
+  // v2.0: Interview Feedback types
+  InterviewerType,
+  InterviewRating,
+  AIRating,
+  FeedbackStatus,
 } from './models'
 
 // Export all API types
@@ -46,4 +51,10 @@ export type {
   JoinOrganizationRequest,
   ApprovalRequest,
   RoleUpdateRequest,
+  // v2.0: Interview Feedback API types
+  CreateInterviewEvaluationRequest,
+  CreateAIEvaluationRequest,
+  CreateStatusChangeRequest,
+  FeedbackListResponse,
+  FeedbackQueryParams,
 } from './api'

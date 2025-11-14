@@ -1997,3 +1997,717 @@ className={`transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}
 
 **认证功能完成度**: 100% ✅
 **代码质量**: TypeScript 编译零错误 ✅
+
+---
+
+## 🔄 阶段 8: Interview Feedbacks 数据库重构 v2.0 前端适配 (新增 - 2025-01-27)
+
+### 概述
+
+配合后端 Interview Feedbacks 数据库重构 v2.0，更新前端类型定义、API 调用和 UI 组件，以支持新的三种记录类型（面试评价、AI 评价、状态变更）。
+
+**重构背景**:
+- **数据库层**: 已完成 schema 重构，支持三种互斥记录类型
+- **后端层**: Models、Service、API 已全部适配 v2.0
+- **前端层**: 需要更新类型定义和组件以适配新 API
+
+**核心变更**:
+1. **interviewer 字段**: `number` → `UUID`
+2. **新增 interviewer_type**: `"user" | "agent" | "system"`
+3. **三种记录类型**:
+   - 面试评价：`interview_rating` (1-4)
+   - AI 评价：`ai_rating` (1-10)
+   - 状态变更：`new_status` (enum)
+4. **移除字段**: `is_status_change` (不再需要)
+
+**关键约束**:
+- 三个类型字段（interview_rating, ai_rating, new_status）必须**恰好一个非空**
+- position_id 改为**可选字段**（支持候选人级别的记录）
+
+---
+
+### Task 8.1: 更新前端 API 类型定义
+
+**任务目标**: 更新 TypeScript 类型定义以匹配 v2.0 API
+
+**状态**: ⏳ 待开始
+**预计时间**: 1-2小时
+
+**需要更新的文件**:
+```
+frontend/src/types/
+├── models.ts           # 数据模型类型
+├── api.ts              # API 请求/响应类型
+└── index.ts            # 导出汇总
+```
+
+**详细变更**:
+
+#### 1. 更新 `InterviewFeedback` 模型类型
+
+**文件**: `src/types/models.ts`
+
+**旧类型定义**:
+```typescript
+export interface InterviewFeedback {
+  id: number
+  candidateId: number
+  positionId: number
+  interviewer: number        // ❌ 旧: number
+  rating?: number            // ❌ 旧: 1-5
+  comments?: string
+  interviewDate?: string
+  newStatus?: string
+  isStatusChange: boolean    // ❌ 旧: 布尔标志
+  createdAt: string
+}
+```
+
+**新类型定义** (v2.0):
+```typescript
+// 新增类型定义
+export type InterviewerType = 'user' | 'agent' | 'system'
+export type InterviewRating = 1 | 2 | 3 | 4
+export type AIRating = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
+export type FeedbackStatus =
+  | 'screening'
+  | 'interview'
+  | 'offer'
+  | 'hired'
+  | 'rejected'
+  | 'withdrawn'
+
+// 更新主模型
+export interface InterviewFeedback {
+  id: number
+  candidateId: number
+  positionId: number | null              // ✅ 新: 可空
+  interviewer: string                    // ✅ 新: UUID (string)
+  interviewerType: InterviewerType       // ✅ 新: 类型字段
+  interviewDate: string                  // ✅ 必填
+  comments: string                       // ✅ 必填
+
+  // 三种互斥记录类型（恰好一个非空）
+  interviewRating: InterviewRating | null   // ✅ 新: 1-4
+  aiRating: AIRating | null                 // ✅ 新: 1-10
+  newStatus: FeedbackStatus | null          // ✅ 新: 状态枚举
+
+  isDeleted: boolean
+  createdAt: string
+}
+```
+
+#### 2. 更新 API 请求类型
+
+**文件**: `src/types/api.ts`
+
+**创建通用请求类型**:
+```typescript
+// 通用创建请求（支持所有三种类型）
+export interface CreateInterviewFeedbackRequest {
+  candidateId: number
+  positionId?: number                    // ✅ 可选
+  interviewer: string                    // ✅ UUID
+  interviewerType: InterviewerType
+  interviewDate?: string                 // ✅ 可选，后端自动填充
+  comments: string
+
+  // 三选一
+  interviewRating?: InterviewRating
+  aiRating?: AIRating
+  newStatus?: FeedbackStatus
+}
+
+// 便捷类型：面试评价
+export interface CreateInterviewEvaluationRequest {
+  candidateId: number
+  positionId?: number
+  interviewer: string
+  interviewerType?: 'user'
+  interviewDate: string
+  comments: string
+  interviewRating: InterviewRating
+}
+
+// 便捷类型：AI 评价
+export interface CreateAIEvaluationRequest {
+  candidateId: number
+  positionId?: number
+  interviewer: string                    // AI agent UUID
+  interviewerType?: 'agent'
+  comments: string
+  aiRating: AIRating
+}
+
+// 便捷类型：状态变更
+export interface CreateStatusChangeRequest {
+  candidateId: number
+  positionId?: number
+  interviewer: string
+  interviewerType?: 'user' | 'system'
+  newStatus: FeedbackStatus
+  comments: string                        // ✅ 变更原因
+}
+
+// 更新请求
+export interface UpdateInterviewFeedbackRequest {
+  interviewRating?: InterviewRating
+  aiRating?: AIRating
+  comments?: string
+  interviewDate?: string
+}
+```
+
+#### 3. 更新 API 响应类型
+
+**文件**: `src/types/api.ts`
+
+```typescript
+// 列表响应（支持类型筛选）
+export interface FeedbackListResponse {
+  feedbacks: InterviewFeedback[]
+  total: number
+  limit: number
+  offset: number
+}
+
+// 查询参数（新增 record_type 筛选）
+export interface FeedbackQueryParams {
+  candidateId: number
+  positionId?: number
+  recordType?: 'interview' | 'ai' | 'status'  // ✅ 新: 类型筛选
+  limit?: number
+  offset?: number
+}
+```
+
+#### 4. 向后兼容处理
+
+**文件**: `src/utils/apiAdapter.ts` (新增)
+
+```typescript
+/**
+ * 适配器：将旧 API 格式转为 v2.0 格式（过渡期使用）
+ */
+export function adaptLegacyFeedback(legacy: any): InterviewFeedback {
+  return {
+    ...legacy,
+    interviewer: legacy.interviewer?.toString() || '00000000-0000-0000-0000-000000000000',
+    interviewerType: legacy.interviewer ? 'user' : 'system',
+    interviewRating: !legacy.isStatusChange ? legacy.rating : null,
+    aiRating: null,
+    newStatus: legacy.isStatusChange ? legacy.newStatus : null,
+  }
+}
+```
+
+**验收标准**:
+- [ ] 所有类型定义与后端 API 一致
+- [ ] 编译无 TypeScript 错误
+- [ ] 导入路径正确
+- [ ] 类型覆盖完整（无 any 类型）
+- [ ] 添加 JSDoc 注释说明字段用途
+
+**测试方法**:
+```bash
+npm run type-check     # TypeScript 类型检查
+npm run build         # 生产构建（验证类型）
+```
+
+---
+
+### Task 8.2: 更新前端面试评价组件
+
+**任务目标**: 更新 UI 组件以支持 v2.0 的三种记录类型
+
+**状态**: ⏳ 待开始
+**预计时间**: 2-3小时
+
+**需要更新的文件**:
+```
+frontend/src/
+├── components/business/
+│   ├── InterviewFeedbackModal.tsx     # 评价表单（需重构）
+│   ├── InterviewTimeline.tsx          # 时间线展示（需适配）
+│   └── AddRecordModal.tsx             # 新增记录（需适配）
+├── hooks/api/
+│   └── useInterviewFeedbacks.ts       # API hooks（需更新）
+└── services/
+    └── interviewApi.ts                # API service（需更新）
+```
+
+**详细变更**:
+
+#### 1. 更新 API Service 层
+
+**文件**: `src/services/interviewApi.ts`
+
+```typescript
+import { apiClient } from '@/lib/api'
+import type {
+  CreateInterviewFeedbackRequest,
+  CreateInterviewEvaluationRequest,
+  CreateAIEvaluationRequest,
+  CreateStatusChangeRequest,
+  UpdateInterviewFeedbackRequest,
+  FeedbackListResponse,
+  FeedbackQueryParams,
+} from '@/types/api'
+
+export const interviewApi = {
+  // 通用创建（支持三种类型）
+  create: async (data: CreateInterviewFeedbackRequest) => {
+    const response = await apiClient.post('/interview-feedbacks/', data)
+    return response.data
+  },
+
+  // 便捷方法：创建面试评价
+  createInterviewEvaluation: async (data: CreateInterviewEvaluationRequest) => {
+    const response = await apiClient.post('/interview-feedbacks/', {
+      ...data,
+      interviewerType: data.interviewerType || 'user',
+    })
+    return response.data
+  },
+
+  // 便捷方法：创建状态变更
+  createStatusChange: async (data: CreateStatusChangeRequest) => {
+    const response = await apiClient.post('/interview-feedbacks/status-change', data)
+    return response.data
+  },
+
+  // 获取候选人的所有记录（支持类型筛选）
+  getForCandidate: async (params: FeedbackQueryParams): Promise<FeedbackListResponse> => {
+    const response = await apiClient.get('/interview-feedbacks/candidate/' + params.candidateId, {
+      params: {
+        record_type: params.recordType,
+        limit: params.limit || 100,
+        offset: params.offset || 0,
+      }
+    })
+    return response.data
+  },
+
+  // 更新（只能更新评价内容，不能更改类型）
+  update: async (id: number, data: UpdateInterviewFeedbackRequest) => {
+    const response = await apiClient.patch(`/interview-feedbacks/${id}`, data)
+    return response.data
+  },
+}
+```
+
+#### 2. 更新 API Hooks
+
+**文件**: `src/hooks/api/useInterviewFeedbacks.ts`
+
+```typescript
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { interviewApi } from '@/services/interviewApi'
+import type { FeedbackQueryParams } from '@/types/api'
+
+// 获取候选人的反馈记录（支持类型筛选）
+export const useInterviewFeedbacks = (params: FeedbackQueryParams) => {
+  return useQuery({
+    queryKey: ['interview-feedbacks', params],
+    queryFn: () => interviewApi.getForCandidate(params),
+    enabled: !!params.candidateId,
+  })
+}
+
+// 创建面试评价
+export const useCreateInterviewEvaluation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: interviewApi.createInterviewEvaluation,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['interview-feedbacks'])
+      toast.success('面试评价提交成功')
+    },
+  })
+}
+
+// 创建状态变更
+export const useCreateStatusChange = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: interviewApi.createStatusChange,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['interview-feedbacks'])
+      queryClient.invalidateQueries(['position-candidates'])  // 刷新状态
+      toast.success('状态变更成功')
+    },
+  })
+}
+```
+
+#### 3. 重构面试评价表单
+
+**文件**: `src/components/business/InterviewFeedbackModal.tsx`
+
+**关键变更**:
+
+```typescript
+// 表单数据结构（v2.0）
+interface FormData {
+  interviewDate: string
+  comments: string
+  interviewRating: InterviewRating  // 1-4 星（不再是 1-5）
+}
+
+// 评分组件（1-4 星）
+const RatingInput = ({ value, onChange }: RatingInputProps) => {
+  const ratings = [1, 2, 3, 4] as const  // ✅ 4 星制
+
+  return (
+    <div className="flex gap-2">
+      {ratings.map(rating => (
+        <button
+          key={rating}
+          type="button"
+          onClick={() => onChange(rating)}
+          className={cn(
+            'w-12 h-12 rounded-full border-2 transition-all',
+            value === rating
+              ? 'bg-orange-500 border-orange-500 text-white scale-110'
+              : 'border-gray-300 hover:border-orange-400'
+          )}
+        >
+          {rating}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// 提交处理
+const handleSubmit = async (data: FormData) => {
+  await createInterviewEvaluation.mutateAsync({
+    candidateId,
+    positionId,
+    interviewer: currentUser.id,        // ✅ UUID string
+    interviewerType: 'user',            // ✅ 新字段
+    interviewDate: data.interviewDate,
+    comments: data.comments,
+    interviewRating: data.interviewRating,  // ✅ 1-4
+  })
+}
+```
+
+#### 4. 更新时间线展示组件
+
+**文件**: `src/components/business/InterviewTimeline.tsx`
+
+**关键变更**:
+
+```typescript
+const InterviewTimeline = ({ candidateId, positionId }: Props) => {
+  // 支持类型筛选
+  const [recordType, setRecordType] = useState<'all' | 'interview' | 'ai' | 'status'>('all')
+
+  const { data, isLoading } = useInterviewFeedbacks({
+    candidateId,
+    positionId,
+    recordType: recordType === 'all' ? undefined : recordType,
+  })
+
+  return (
+    <div>
+      {/* 类型筛选器 */}
+      <Tabs value={recordType} onChange={setRecordType}>
+        <Tab value="all">全部记录</Tab>
+        <Tab value="interview">面试评价</Tab>
+        <Tab value="ai">AI 评价</Tab>
+        <Tab value="status">状态变更</Tab>
+      </Tabs>
+
+      {/* 时间线 */}
+      <div className="space-y-4 mt-4">
+        {data?.feedbacks.map(feedback => (
+          <FeedbackCard key={feedback.id} feedback={feedback} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// 反馈卡片（支持三种类型）
+const FeedbackCard = ({ feedback }: { feedback: InterviewFeedback }) => {
+  // 判断记录类型
+  const recordType = feedback.interviewRating !== null
+    ? 'interview'
+    : feedback.aiRating !== null
+    ? 'ai'
+    : 'status'
+
+  return (
+    <div className="border rounded-lg p-4">
+      {/* 类型标识 */}
+      <div className="flex items-center gap-2 mb-2">
+        {recordType === 'interview' && (
+          <>
+            <Badge variant="primary">面试评价</Badge>
+            <Rating value={feedback.interviewRating!} max={4} />
+          </>
+        )}
+        {recordType === 'ai' && (
+          <>
+            <Badge variant="info">AI 评价</Badge>
+            <span className="text-orange-600 font-bold">
+              {feedback.aiRating}/10
+            </span>
+          </>
+        )}
+        {recordType === 'status' && (
+          <>
+            <Badge variant="secondary">状态变更</Badge>
+            <Badge variant={getStatusVariant(feedback.newStatus!)}>
+              {getStatusLabel(feedback.newStatus!)}
+            </Badge>
+          </>
+        )}
+      </div>
+
+      {/* 评价内容 */}
+      <p className="text-gray-700">{feedback.comments}</p>
+
+      {/* 元信息 */}
+      <div className="flex items-center gap-3 mt-3 text-sm text-gray-500">
+        <span>{getInterviewerName(feedback.interviewer)}</span>
+        <span>•</span>
+        <span>{feedback.interviewerType === 'user' ? '👤 用户' : '🤖 系统'}</span>
+        <span>•</span>
+        <span>{formatDate(feedback.interviewDate)}</span>
+      </div>
+    </div>
+  )
+}
+```
+
+#### 5. 更新状态变更组件
+
+**文件**: `src/components/business/AddRecordModal.tsx`
+
+```typescript
+const AddRecordModal = ({ candidateId, positionId, onClose }: Props) => {
+  const [recordType, setRecordType] = useState<'interview' | 'status'>('interview')
+  const createStatusChange = useCreateStatusChange()
+
+  // 状态变更表单
+  const StatusChangeForm = () => {
+    const [newStatus, setNewStatus] = useState<FeedbackStatus>('interview')
+    const [comments, setComments] = useState('')
+
+    const handleSubmit = async () => {
+      await createStatusChange.mutateAsync({
+        candidateId,
+        positionId,
+        interviewer: currentUser.id,
+        interviewerType: 'user',
+        newStatus,
+        comments,
+      })
+      onClose()
+    }
+
+    return (
+      <form onSubmit={handleSubmit}>
+        <Select
+          label="新状态"
+          value={newStatus}
+          onChange={setNewStatus}
+          options={[
+            { value: 'screening', label: '筛选中' },
+            { value: 'interview', label: '面试中' },
+            { value: 'offer', label: 'Offer' },
+            { value: 'hired', label: '已录用' },
+            { value: 'rejected', label: '已拒绝' },
+            { value: 'withdrawn', label: '已撤回' },
+          ]}
+        />
+        <Textarea
+          label="变更原因"
+          value={comments}
+          onChange={setComments}
+          required
+        />
+        <Button type="submit" loading={createStatusChange.isLoading}>
+          确认
+        </Button>
+      </form>
+    )
+  }
+
+  return (
+    <Modal open onClose={onClose}>
+      <Tabs value={recordType} onChange={setRecordType}>
+        <Tab value="interview">面试评价</Tab>
+        <Tab value="status">状态变更</Tab>
+      </Tabs>
+
+      {recordType === 'interview' ? <InterviewForm /> : <StatusChangeForm />}
+    </Modal>
+  )
+}
+```
+
+**验收标准**:
+- [ ] 面试评价表单支持 1-4 星评分
+- [ ] 状态变更表单正常工作
+- [ ] 时间线正确显示三种记录类型
+- [ ] 类型筛选功能正常
+- [ ] API 调用成功（200 OK）
+- [ ] 数据正确渲染到 UI
+- [ ] 无 TypeScript 编译错误
+- [ ] 响应式布局正常
+
+---
+
+### Task 8.3: 前端手动测试验证
+
+**任务目标**: 完整测试 v2.0 功能，确保前后端集成正常
+
+**状态**: ⏳ 待开始
+**预计时间**: 1小时
+
+**测试场景**:
+
+#### 1. 面试评价创建测试
+
+**操作步骤**:
+1. 进入候选人详情页
+2. 点击"添加面试评价"
+3. 填写评价内容，选择 1-4 星
+4. 提交表单
+
+**预期结果**:
+- ✅ 表单验证通过
+- ✅ API 请求成功（POST /api/interview-feedbacks/）
+- ✅ 时间线立即显示新记录
+- ✅ 评分正确显示（1-4 星）
+- ✅ 面试官信息正确
+
+#### 2. 状态变更测试
+
+**操作步骤**:
+1. 进入候选人详情页
+2. 点击"状态变更"
+3. 选择新状态（如"面试中"）
+4. 填写变更原因
+5. 提交
+
+**预期结果**:
+- ✅ API 请求成功（POST /api/interview-feedbacks/status-change）
+- ✅ 时间线显示状态变更记录
+- ✅ Badge 显示正确状态
+- ✅ 候选人状态同步更新
+
+#### 3. 时间线筛选测试
+
+**操作步骤**:
+1. 进入候选人详情页
+2. 点击"全部记录" tab
+3. 切换到"面试评价" tab
+4. 切换到"状态变更" tab
+
+**预期结果**:
+- ✅ 筛选参数正确传递（record_type）
+- ✅ 列表内容正确筛选
+- ✅ 无重复请求
+- ✅ 加载状态正确显示
+
+#### 4. 向后兼容测试（如有旧数据）
+
+**操作步骤**:
+1. 查看旧数据的显示
+2. 验证字段映射正确
+
+**预期结果**:
+- ✅ 旧数据正确转换为新格式
+- ✅ 无显示错误
+- ✅ interviewer UUID 正确显示
+
+#### 5. 边界情况测试
+
+**测试用例**:
+- [ ] positionId 为 null 的记录（候选人级别）
+- [ ] 无评分的状态变更记录
+- [ ] 空评价内容（应被拦截）
+- [ ] 评分超出范围（1-4）
+
+**验收标准**:
+- [ ] 所有核心功能测试通过
+- [ ] 无 JavaScript 错误
+- [ ] 无 API 错误（4xx/5xx）
+- [ ] UI 响应流畅
+- [ ] 数据一致性正常
+- [ ] 边界情况处理正确
+
+**测试工具**:
+- Chrome DevTools (Network, Console)
+- React Query DevTools
+- Postman（API 独立验证）
+
+**测试报告**: 记录到 `frontend/TEST_REPORT_v2.0.md`
+
+---
+
+## 📊 Interview Feedbacks v2.0 前端适配进度
+
+### 任务清单
+
+| 任务ID | 任务名称 | 预计时间 | 实际时间 | 状态 | 完成日期 |
+|--------|---------|---------|---------|------|---------|
+| 8.1 | 更新前端 API 类型定义 | 1-2小时 | - | ⏳ 待开始 | - |
+| 8.2 | 更新前端面试评价组件 | 2-3小时 | - | ⏳ 待开始 | - |
+| 8.3 | 前端手动测试验证 | 1小时 | - | ⏳ 待开始 | - |
+
+**预计总时间**: 4-6小时
+**完成度**: 0%
+
+### 依赖关系
+
+```
+后端 Task 7.1-7.4 (已完成)
+    ↓
+前端 Task 8.1 (类型定义)
+    ↓
+前端 Task 8.2 (组件更新)
+    ↓
+前端 Task 8.3 (测试验证)
+    ↓
+后端 Task 7.8 (文档更新)
+```
+
+### 实施顺序
+
+**Day 1**:
+- Task 8.1: 更新类型定义（1-2小时）
+
+**Day 2**:
+- Task 8.2: 更新组件（2-3小时）
+- Task 8.3: 测试验证（1小时）
+
+### 验收标准
+
+**前端 v2.0 适配完成标志**:
+- [ ] 所有类型定义与后端 API 一致
+- [ ] 面试评价表单支持 1-4 星
+- [ ] 状态变更功能正常
+- [ ] 时间线支持三种记录类型
+- [ ] 类型筛选功能正常
+- [ ] API 集成测试通过
+- [ ] TypeScript 编译零错误
+- [ ] 无运行时错误
+
+**用户体验指标**:
+- [ ] 表单提交响应 < 1s
+- [ ] 时间线加载流畅
+- [ ] 类型切换无延迟
+- [ ] 错误提示清晰
+
+---
+
+**最后更新**: 2025-01-27 (添加 Interview Feedbacks v2.0 前端适配任务)
+**下一步**: 执行 Task 8.1 - 更新前端 API 类型定义

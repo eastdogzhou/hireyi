@@ -184,26 +184,101 @@ export interface UpdatePositionRequest {
 }
 
 /**
- * Create Interview Feedback Request
- * 创建面试反馈请求
+ * Create Interview Feedback Request (v2.0 - Generic)
+ * 创建面试反馈请求（通用，支持三种记录类型）
+ *
+ * Must specify exactly one of: interview_rating, ai_rating, or new_status
  */
 export interface CreateInterviewFeedbackRequest {
-  position_id?: number  // Optional: allows candidate-level records
   candidate_id: number
-  interviewer: number
-  rating: number
+  position_id?: number  // Optional: allows candidate-level records
+  interviewer: string   // UUID string (v2.0: changed from number)
+  interviewer_type: 'user' | 'agent' | 'system'  // v2.0: new field
+  interview_date?: string  // Optional, auto-filled by backend if not provided
+  comments: string  // Required
+
+  // Three mutually exclusive type fields (exactly one must be provided)
+  interview_rating?: 1 | 2 | 3 | 4  // Interview evaluation (1-4 scale)
+  ai_rating?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10  // AI evaluation (1-10 scale)
+  new_status?: 'screening' | 'interview' | 'offer' | 'hired' | 'rejected' | 'withdrawn'  // Status change
+}
+
+/**
+ * Create Interview Evaluation Request (v2.0 - Convenience)
+ * 创建面试评价请求（便捷类型）
+ */
+export interface CreateInterviewEvaluationRequest {
+  candidate_id: number
+  position_id?: number
+  interviewer: string  // UUID string
+  interviewer_type?: 'user'  // Default: 'user'
+  interview_date: string  // Required for interview evaluations
+  comments: string
+  interview_rating: 1 | 2 | 3 | 4  // Required (1-4 scale)
+}
+
+/**
+ * Create AI Evaluation Request (v2.0 - Convenience)
+ * 创建 AI 评价请求（便捷类型）
+ */
+export interface CreateAIEvaluationRequest {
+  candidate_id: number
+  position_id?: number
+  interviewer: string  // AI agent UUID
+  interviewer_type?: 'agent'  // Default: 'agent'
+  comments: string
+  ai_rating: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10  // Required (1-10 scale)
+}
+
+/**
+ * Create Status Change Request (v2.0 - Convenience)
+ * 创建状态变更请求（便捷类型）
+ */
+export interface CreateStatusChangeRequest {
+  candidate_id: number
+  position_id?: number  // Optional: allows candidate-level status changes
+  interviewer: string  // User UUID
+  interviewer_type?: 'user' | 'system'  // Default: 'user'
+  new_status: 'screening' | 'interview' | 'offer' | 'hired' | 'rejected' | 'withdrawn'  // Required
+  comments: string  // Reason for status change
+}
+
+/**
+ * Update Interview Feedback Request (v2.0)
+ * 更新面试反馈请求
+ *
+ * Note: Cannot change record type (interview/AI/status)
+ * Only updates content within the same type
+ */
+export interface UpdateInterviewFeedbackRequest {
+  interview_rating?: 1 | 2 | 3 | 4
+  ai_rating?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
   comments?: string
   interview_date?: string
 }
 
 /**
- * Update Interview Feedback Request
- * 更新面试反馈请求
+ * Feedback List Response (v2.0)
+ * 面试反馈列表响应
  */
-export interface UpdateInterviewFeedbackRequest {
-  rating?: number
-  comments?: string
-  interview_date?: string
+export interface FeedbackListResponse {
+  feedbacks: import('./models').InterviewFeedback[]
+  total: number
+  limit: number
+  offset: number
+}
+
+/**
+ * Feedback Query Params (v2.0)
+ * 面试反馈查询参数（支持类型筛选）
+ */
+export interface FeedbackQueryParams {
+  candidate_id: number
+  position_id?: number
+  /** Filter by record type: 'interview', 'ai', 'status', or undefined (all) */
+  record_type?: 'interview' | 'ai' | 'status'
+  limit?: number
+  offset?: number
 }
 
 /**

@@ -18,7 +18,7 @@ import {
   SearchBar,
   SelectDropdown,
 } from '@/ui/components/common'
-import { UploadResumeModal, SmartScreeningModal } from '@/components/business'
+import { UploadResumeModal, SmartScreeningModal, EditPositionModal } from '@/components/business'
 import { formatDate } from '@/lib/utils/format'
 import {
   ArrowLeft,
@@ -52,6 +52,7 @@ export default function PositionDetail() {
   // Modal state
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [screeningModalOpen, setScreeningModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
 
   // Fetch position data
   const { data: position, isLoading: positionLoading, error: positionError } = usePosition(positionId)
@@ -103,6 +104,12 @@ export default function PositionDetail() {
   const handleScreeningSuccess = () => {
     // Invalidate position candidates query to refresh the list
     queryClient.invalidateQueries({ queryKey: positionKeys.candidates(positionId) })
+  }
+
+  // Handle edit success
+  const handleEditSuccess = () => {
+    // Invalidate position query to refresh position details
+    queryClient.invalidateQueries({ queryKey: positionKeys.detail(positionId) })
   }
 
   // Status options
@@ -187,7 +194,11 @@ export default function PositionDetail() {
           <h1 className="text-3xl font-bold text-gray-900">{position.title}</h1>
           <p className="text-gray-600 mt-1">{position.department}</p>
         </div>
-        <Button variant="secondary" icon={<Edit className="w-4 h-4" />}>
+        <Button
+          variant="secondary"
+          icon={<Edit className="w-4 h-4" />}
+          onClick={() => setEditModalOpen(true)}
+        >
           编辑职位
         </Button>
       </div>
@@ -318,7 +329,7 @@ export default function PositionDetail() {
         </div>
 
         {/* Search and Filter */}
-        <Card>
+        <Card overflowVisible>
           <div className="p-4 flex flex-wrap gap-3">
             <div className="flex-1 min-w-[300px]">
               <SearchBar
@@ -519,6 +530,14 @@ export default function PositionDetail() {
         positionId={positionId}
         positionTitle={position.title}
         onSuccess={handleScreeningSuccess}
+      />
+
+      {/* Edit Position Modal */}
+      <EditPositionModal
+        open={editModalOpen}
+        position={position}
+        onClose={() => setEditModalOpen(false)}
+        onSuccess={handleEditSuccess}
       />
     </div>
   )

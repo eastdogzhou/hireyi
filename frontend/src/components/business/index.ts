@@ -14,3 +14,6 @@ export type { InterviewFeedbackModalProps, InterviewFeedbackFormData } from './I
 
 export { InterviewTimeline } from './InterviewTimeline'
 export type { InterviewTimelineProps } from './InterviewTimeline'
+
+export { EditPositionModal } from './EditPositionModal'
+export type { EditPositionModalProps } from './EditPositionModal'

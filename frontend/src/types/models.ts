@@ -146,25 +146,64 @@ export interface PositionCandidate {
 }
 
 /**
- * Interview Feedback
- * 执行记录 - 双重用途：面试评价 + 状态变更记录
+ * Interviewer Type (v2.0)
+ * 面试官/操作者类型
+ */
+export type InterviewerType = 'user' | 'agent' | 'system'
+
+/**
+ * Interview Rating (v2.0)
+ * 面试评分 (1-4 scale)
+ */
+export type InterviewRating = 1 | 2 | 3 | 4
+
+/**
+ * AI Rating (v2.0)
+ * AI 评分 (1-10 scale)
+ */
+export type AIRating = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10
+
+/**
+ * Feedback Status (v2.0)
+ * 状态枚举 (用于状态变更记录)
+ */
+export type FeedbackStatus =
+  | 'screening'
+  | 'interview'
+  | 'offer'
+  | 'hired'
+  | 'rejected'
+  | 'withdrawn'
+
+/**
+ * Interview Feedback (v2.0)
+ * 执行记录 - 支持三种互斥记录类型：
+ *   1. 面试评价 (interview_rating 非空)
+ *   2. AI 评价 (ai_rating 非空)
+ *   3. 状态变更 (new_status 非空)
  */
 export interface InterviewFeedback {
   id: number
-  position_id: number
+  /** Position ID (nullable: 支持候选人级别的记录) */
+  position_id: number | null
   candidate_id: number
-  /** Interviewer/operator user ID */
-  interviewer: number
-  /** Interview rating (1-5), NULL for status changes */
-  rating?: number | null
-  /** Feedback comments or status change reason */
-  comments?: string | null
-  /** Interview date, NULL for status changes */
-  interview_date?: string | null
-  /** New status for status change records */
-  new_status?: string | null
-  /** True if this is a status change record */
-  is_status_change: boolean
+  /** Interviewer UUID (v2.0: changed from number to UUID string) */
+  interviewer: string
+  /** Interviewer type (v2.0: new field) */
+  interviewer_type: InterviewerType
+  /** Interview date (required in v2.0) */
+  interview_date: string
+  /** Feedback comments or status change reason (required in v2.0) */
+  comments: string
+
+  // Three mutually exclusive record types (exactly one must be non-null)
+  /** Interview rating (1-4), null for non-interview records */
+  interview_rating: InterviewRating | null
+  /** AI rating (1-10), null for non-AI records */
+  ai_rating: AIRating | null
+  /** New status for status change records, null for non-status records */
+  new_status: FeedbackStatus | null
+
   /** Soft delete flag */
   is_deleted: boolean
   created_at: string
