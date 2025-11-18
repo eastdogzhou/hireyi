@@ -1,8 +1,8 @@
 # AI 简历筛选系统 - 后端任务与进展
 
-> 📅 最后更新: 2025-10-30
-> 📊 **MVP完成度: 100%** | **认证功能: 99%** ✅
-> 🎯 状态: MVP功能已完成，认证与组织管理系统开发完成，迁移基础设施就绪，等待测试
+> 📅 最后更新: 2025-11-14
+> 📊 **MVP完成度: 100%** | **认证功能: 100%** | **Interview Feedbacks v2.0: 100%** ✅
+> 🎯 状态: MVP所有功能已完成，认证与组织管理系统运行正常，Interview Feedbacks v2.0重构完成
 
 ## 🚀 快速状态
 
@@ -29,6 +29,20 @@
 - ✅ 用户管理 CRUD API (`/api/users/*`) - 完整的用户管理功能
 
 ### ♻️ 最近更新
+
+#### 2025-11-11 - Interview Feedbacks v2.0 重构完成 🎉
+- ✅ **数据库迁移**: interviewer 字段改为 UUID，移除 is_status_change 布尔标志
+- ✅ **三种记录类型**: 通过三个互斥字段实现（interview_rating, ai_rating, new_status）
+  - **面试评价** (interview_rating: 1-4 星) - 人工面试评价
+  - **AI 评价** (ai_rating: 1-10 分) - AI 自动评估
+  - **状态变更** (new_status: enum) - 候选人状态流转
+- ✅ **新增字段**:
+  - `interviewer_type` (user/agent/system) - 评价者类型
+  - `interview_date` (DATE NOT NULL) - 面试日期，默认为创建日期
+  - `comments` (TEXT NOT NULL) - 评价内容，必填
+- ✅ **后端完整适配**: Models、Service、API 全部重构
+- ✅ **record_type 筛选**: 查询参数支持按记录类型筛选
+- ✅ **注册 API 修复**: 解决 403 Forbidden 问题，自动创建个人组织
 
 #### 2025-10-22 - 简历解析优化 (v1.1)
 - ✅ **数据库 Schema v1.1**: 新增 3 个字段用于增强简历信息存储
