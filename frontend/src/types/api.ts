@@ -336,18 +336,21 @@ export interface JoinOrganizationRequest {
 
 /**
  * Approval Request
- * 审批请求
+ * 审批成员请求
  */
 export interface ApprovalRequest {
   member_id: number
   action: 'approve' | 'reject'
+  /** Role to assign when approving (defaults to 'interviewer'). Only creators can approve as 'admin'. */
+  approved_role?: 'admin' | 'interviewer'
 }
 
 /**
  * Role Update Request
- * 角色更新请求
+ * 更新成员角色请求
  */
 export interface RoleUpdateRequest {
   member_id: number
-  new_role: 'owner' | 'admin' | 'member'
+  /** New role (cannot set 'creator') */
+  new_role: 'admin' | 'interviewer' | 'pending'
 }

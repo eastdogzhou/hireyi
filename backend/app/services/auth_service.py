@@ -90,57 +90,21 @@ class AuthService:
                 org_id = request.org_id
                 org_name = org_check.data[0]["name"]
 
-                # Create join request (member role)
-                # Note: Current DB schema doesn't have 'status' column
-                #       Using 'interviewer' role to indicate pending approval
+                # Create join request with pending status
                 member_data = {
                     "org_id": org_id,
                     "user_id": user_id,
-                    "role": "interviewer",  # Temporary: use 'interviewer' for pending members
+                    "role": "pending",  # Pending approval from admin
                 }
                 self.supabase.table("org_members").insert(member_data).execute()
-                logger.info(f"Join request created for user {user_id} to org {org_id} (role: interviewer/pending)")
+                logger.info(f"Join request created for user {user_id} to org {org_id} (role: pending)")
 
+                # DO NOT set current_org_id until approved
+                # User will select org after login when approved
             else:
-                # Option B: Create personal organization (default)
-                logger.info(f"Creating personal organization for user {user_id}")
-
-                # Generate 6-digit org code
-                import random
-                import string
-                org_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-
-                # Create organization
-                org_data = {
-                    "name": f"{request.name}的组织",  # "{User's Name}'s Organization"
-                    "org_code": org_code,
-                    "created_by": user_id,
-                }
-
-                org_response = self.supabase.table("organizations").insert(org_data).execute()
-
-                if not org_response.data:
-                    raise ValueError("Failed to create organization")
-
-                org_id = org_response.data[0]["id"]
-                org_name = org_response.data[0]["name"]
-                logger.info(f"Created organization {org_id} ({org_name}) with code {org_code}")
-
-                # Add user as admin
-                # Note: Current DB schema doesn't have 'status' column
-                member_data = {
-                    "org_id": org_id,
-                    "user_id": user_id,
-                    "role": "admin",  # Creator is admin
-                    "approved_at": datetime.now(UTC).isoformat(),
-                    "approved_by": user_id,  # Self-approved
-                }
-                self.supabase.table("org_members").insert(member_data).execute()
-                logger.info(f"Added user {user_id} as admin of org {org_id}")
-
-                # Update user's current_org_id
-                self.supabase.table("users").update({"current_org_id": org_id}).eq("id", user_id).execute()
-                logger.info(f"Set user {user_id}'s current_org_id to {org_id}")
+                # Option B: No organization selected
+                # User will be redirected to onboarding page to choose
+                logger.info(f"User {user_id} registered without organization, will enter onboarding flow")
 
             # Step 4: Generate tokens
             access_token = self._create_access_token(user_id, request.email)
@@ -156,17 +120,18 @@ class AuthService:
             )
 
             # Return user profile with organization info
+            # Note: current_org_id is None for pending members or users without org
             user_profile = UserProfile(
                 id=user_id,
                 email=request.email,
                 name=request.name,
-                current_org_id=org_id,  # Set to created/joined org
+                current_org_id=None,  # Will be set after onboarding or approval
                 created_at=datetime.now(UTC),
             )
 
             logger.info(
                 f"Registration successful for {request.email}, "
-                f"org_id={org_id}, org_name={org_name}"
+                f"org_id={org_id if org_id else 'none'}, org_name={org_name if org_name else 'none'}"
             )
 
             return auth_token, user_profile
