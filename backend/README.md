@@ -475,6 +475,50 @@ Authorization: Bearer <access-token>
 
 ---
 
+### Role-Based Access Control (RBAC)
+
+The system implements hierarchical role-based access control with four distinct roles:
+
+#### User Roles
+
+| Role | Level | Description | Permissions |
+|------|-------|-------------|-------------|
+| **Creator** | 最高 | Organization founder | - All admin permissions<br>- Promote users to admin or interviewer<br>- Cannot be changed or removed |
+| **Admin** | 高 | HR/People manager | - Manage organization members<br>- Promote users to interviewer only<br>- Cannot promote to admin |
+| **Interviewer** | 中 | Interview panel member | - View candidates<br>- Create interview feedbacks<br>- No org management access |
+| **Pending** | 无 | Awaiting approval | - No system access<br>- Waiting for admin approval |
+
+#### Hierarchical Permission Model
+
+**Approval Permissions**:
+- **Creator** can approve pending users as:
+  - ✅ Admin (max 3 per organization)
+  - ✅ Interviewer
+- **Admin** can approve pending users as:
+  - ❌ Admin (restricted)
+  - ✅ Interviewer
+
+**Role Update Permissions**:
+- **Creator** can promote/demote members to:
+  - ✅ Admin ↔ Interviewer
+- **Admin** can only demote to:
+  - ❌ Admin (cannot modify other admins)
+  - ✅ Interviewer
+
+#### Registration & Onboarding Flow
+
+1. **New User Registration**: User creates account without organization
+2. **Organization Choice**:
+   - **Option A**: Create new organization → Becomes creator (auto-approved)
+   - **Option B**: Join existing organization → Status = pending
+3. **Approval Process**:
+   - Pending user waits for creator/admin approval
+   - Approver selects target role (admin or interviewer)
+   - Upon approval: user can access system
+4. **Post-Approval**: Creator/admin can update member roles as needed
+
+---
+
 ### Organizations API
 
 Base path: `/api/organizations`

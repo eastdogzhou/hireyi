@@ -3,7 +3,7 @@
  * 组织引导页面 - 新用户创建或加入组织
  */
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { organizationService } from '../../services/organization.service'
@@ -16,7 +16,7 @@ type OnboardingMode = 'select' | 'create' | 'join'
 
 export function OnboardingPage() {
   const navigate = useNavigate()
-  const { refreshOrganizations, refreshUser } = useAuth()
+  const { refreshOrganizations, refreshUser, organizations, currentUser } = useAuth()
 
   const [mode, setMode] = useState<OnboardingMode>('select')
   const [createData, setCreateData] = useState({ name: '' })
@@ -24,6 +24,21 @@ export function OnboardingPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // 检查是否有 pending 状态的组织
+  const pendingOrg = organizations.find((org) => org.my_role === 'pending')
+
+  // 自动导航：如果用户已被批准（有org_id且角色不是pending），自动跳转到首页
+  useEffect(() => {
+    if (currentUser?.org_id) {
+      const userOrg = organizations.find((org) => org.id === currentUser.org_id)
+      if (userOrg && userOrg.my_role !== 'pending') {
+        // 用户已被批准，自动跳转到首页
+        console.log('User approved, navigating to home page')
+        navigate('/')
+      }
+    }
+  }, [currentUser, organizations, navigate])
 
   /**
    * 验证创建组织表单
@@ -116,8 +131,8 @@ export function OnboardingPage() {
       await refreshUser()
       await refreshOrganizations()
 
-      // 跳转到主页
-      navigate('/')
+      // 加入请求已提交，等待审批
+      // 页面会自动显示"等待审批"状态
     } catch (error: any) {
       console.error('Join organization error:', error)
 
@@ -166,9 +181,47 @@ export function OnboardingPage() {
             欢迎加入 hireyi
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            创建新组织或加入现有组织以开始使用
+            {pendingOrg ? '您的加入申请正在审核中' : '创建新组织或加入现有组织以开始使用'}
           </p>
         </div>
+
+        {/* Pending 状态提示 */}
+        {pendingOrg && (
+          <Card className="p-8">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-10 h-10 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">等待审批</h3>
+              <p className="text-gray-600 mb-4">
+                您已申请加入组织：<span className="font-semibold text-gray-900">{pendingOrg.name}</span>
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                组织代码：{pendingOrg.org_code}
+              </p>
+              <Alert variant="info">
+                <p className="text-sm">
+                  您的申请正在等待组织管理员审批。审批通过后，您将可以访问系统功能。
+                  如有疑问，请联系组织管理员。
+                </p>
+              </Alert>
+              <div className="mt-6">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={async () => {
+                    await refreshUser()
+                    await refreshOrganizations()
+                  }}
+                >
+                  刷新状态
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* 错误提示 */}
         {submitError && (
@@ -177,8 +230,8 @@ export function OnboardingPage() {
           </Alert>
         )}
 
-        {/* 选择模式 */}
-        {mode === 'select' && (
+        {/* 选择模式 - 只在没有 pending 组织时显示 */}
+        {!pendingOrg && mode === 'select' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* 创建组织卡片 */}
             <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setMode('create')}>
@@ -212,8 +265,8 @@ export function OnboardingPage() {
           </div>
         )}
 
-        {/* 创建组织表单 */}
-        {mode === 'create' && (
+        {/* 创建组织表单 - 只在没有 pending 组织时显示 */}
+        {!pendingOrg && mode === 'create' && (
           <Card className="p-8">
             <div className="mb-6">
               <h3 className="text-2xl font-bold text-gray-900">创建新组织</h3>
@@ -267,8 +320,8 @@ export function OnboardingPage() {
           </Card>
         )}
 
-        {/* 加入组织表单 */}
-        {mode === 'join' && (
+        {/* 加入组织表单 - 只在没有 pending 组织时显示 */}
+        {!pendingOrg && mode === 'join' && (
           <Card className="p-8">
             <div className="mb-6">
               <h3 className="text-2xl font-bold text-gray-900">加入现有组织</h3>
