@@ -54,6 +54,10 @@ class MemberApprovalRequest(BaseModel):
 
     member_id: int = Field(..., description="Member record ID to approve/reject")
     action: Literal["approve", "reject"] = Field(..., description="Approval action")
+    approved_role: Literal["admin", "interviewer"] | None = Field(
+        default=None,
+        description="Role to assign when approving (defaults to 'interviewer'). Only creators can approve as 'admin'."
+    )
 
 
 class MemberRoleUpdateRequest(BaseModel):

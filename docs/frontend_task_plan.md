@@ -1,8 +1,8 @@
 # AI 简历筛选系统 - 前端任务与进展
 
-> 📅 最后更新: 2025-11-14
-> 📊 **MVP完成度: 100%** | **认证功能: 100%** | **Interview Feedbacks v2.0: 100%** ✅
-> 🎯 状态: MVP所有功能已完成，认证系统运行正常，Interview Feedbacks v2.0前端适配完成
+> 📅 最后更新: 2025-11-18
+> 📊 **MVP完成度: 100%** | **认证功能: 100%** | **权限系统: 100%** | **Interview Feedbacks v2.0: 100%** ✅
+> 🎯 状态: MVP所有功能已完成，认证系统运行正常，分级权限系统已实现，Interview Feedbacks v2.0前端适配完成
 
 ## 🚀 快速状态
 
@@ -1560,10 +1560,10 @@ frontend/src/
 
 ---
 
-## 🔐 阶段 7: 认证与组织管理 (新增 - 2025-01-27)
+## 🔐 阶段 7: 认证与组织管理 (新增 - 2025-01-27, 更新 - 2025-11-18)
 
 ### 概述
-添加用户认证和组织管理前端界面，配合后端实现完整的认证流程和多租户功能。
+添加用户认证和组织管理前端界面，配合后端实现完整的认证流程、多租户功能和分级权限控制系统。
 
 **技术方案**:
 - 认证：Supabase Client + JWT存储
@@ -1819,9 +1819,100 @@ tests/auth/
 
 ---
 
+### Task 7.7: 分级权限系统实现 🆕
+
+**任务目标**: 实现基于角色的分级权限控制系统
+
+**状态**: ✅ 已完成
+**实际时间**: 4小时（2025-11-18完成）
+
+**权限层级**:
+- **Creator** (创建者): 最高权限，可批准用户为admin或interviewer
+- **Admin** (管理员): 管理权限，只能批准用户为interviewer
+- **Interviewer** (面试官): 基础权限，无组织管理权限
+- **Pending** (待审批): 无系统访问权限
+
+**新增文件**:
+```
+src/components/auth/
+└── RequireRole.tsx    # 角色权限守卫组件
+
+src/router/
+└── index.tsx          # 路由配置更新（公开/受保护路由）
+
+src/pages/organizations/
+└── OrganizationMembers.tsx  # 组织成员管理（权限控制UI）
+```
+
+**已实现功能**:
+
+1. **后端权限逻辑**:
+   - ✅ 注册时不自动创建组织（用户选择创建/加入）
+   - ✅ 加入组织时状态为 `pending`
+   - ✅ 审批成员时可指定角色（admin/interviewer）
+   - ✅ Creator可批准为admin或interviewer
+   - ✅ Admin只能批准为interviewer
+   - ✅ 角色更新遵循分级权限
+
+2. **前端路由保护**:
+   - ✅ 重构路由配置，区分公开路由（/login, /register, /onboarding）
+   - ✅ 受保护路由包装在 `ProtectedRoute` 中
+   - ✅ 组织管理页面包装在 `RequireRole` 中（仅creator/admin）
+   - ✅ 面试官角色无法访问组织管理
+
+3. **注册和审批流程**:
+   - ✅ OnboardingPage检查pending状态，显示等待审批UI
+   - ✅ Pending用户可刷新状态，审批后自动进入系统
+   - ✅ AuthContext导航逻辑：无org_id → onboarding
+   - ✅ 创建组织：自动成为creator并进入系统
+
+4. **组织管理UI**:
+   - ✅ 审批pending成员时显示角色选择按钮
+   - ✅ Creator显示"批准为管理员"和"批准为面试官"按钮
+   - ✅ Admin只显示"批准为面试官"按钮
+   - ✅ 角色更新下拉菜单根据当前用户角色过滤选项
+   - ✅ Admin无法修改其他admin的角色
+
+5. **导航菜单**:
+   - ✅ 根据用户角色动态显示导航项
+   - ✅ Interviewer看不到"组织管理"菜单
+   - ✅ Creator和Admin可访问组织管理
+
+**技术实现**:
+```typescript
+// RequireRole组件示例
+<RequireRole allowedRoles={['creator', 'admin']}>
+  <OrganizationMembers />
+</RequireRole>
+
+// 动态导航菜单
+const navigation = useMemo(() => {
+  const baseNav = [...]
+  if (isAdmin && currentOrg) {
+    baseNav.push({ name: '组织管理', href: '...' })
+  }
+  return baseNav
+}, [currentUser?.org_role, currentOrg])
+```
+
+**验收标准**:
+- ✅ 新用户注册后进入onboarding页面
+- ✅ Pending用户看到等待审批提示
+- ✅ Creator可批准用户为admin/interviewer
+- ✅ Admin只能批准用户为interviewer
+- ✅ Interviewer无法访问组织管理页面
+- ✅ 前端类型检查通过（npx tsc --noEmit）
+- ✅ 后端权限API正确拦截非法操作
+
+**文档更新**:
+- ✅ backend/README.md - 添加RBAC权限系统详细说明
+- ✅ docs/frontend_task_plan.md - 记录权限系统实现
+
+---
+
 ## 📊 前端认证功能进度汇总
 
-### 前端认证任务清单 (共6个主任务)
+### 前端认证任务清单 (共7个主任务)
 
 | 任务ID | 任务名称 | 状态 | 预计时间 | 实际时间 | 完成日期 |
 |--------|---------|------|----------|----------|---------|
@@ -1831,8 +1922,9 @@ tests/auth/
 | 7.4 | API拦截器配置 | ✅ 已完成 | 2-3小时 | 1小时 | 2025-10-27 |
 | 7.5 | UI组件更新 | ⏳ 待开始 | 3-4小时 | - | - |
 | 7.6 | 认证流程测试 | ✅ 手动测试 | 4-5小时 | 1小时 | 2025-10-27 |
+| 7.7 | 分级权限系统实现 | ✅ 已完成 | 3-4小时 | 4小时 | 2025-11-18 |
 
-**已完成**: 9小时（核心认证功能）
+**已完成**: 13小时（核心认证功能 + 分级权限系统）
 **待完成**: 3-4小时（UI增强）
 
 ### 实施顺序

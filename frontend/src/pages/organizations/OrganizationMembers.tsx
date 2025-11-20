@@ -47,20 +47,28 @@ export default function OrganizationMembers() {
 
   // Check if current user is admin (creator or admin role)
   const isAdmin = selectedOrg?.my_role === 'creator' || selectedOrg?.my_role === 'admin'
+  const isCreator = selectedOrg?.my_role === 'creator'
 
   // Handle organization selection
   const handleOrgChange = (value: string | number | (string | number)[]) => {
     setSelectedOrgId(value as string)
   }
 
-  // Handle approve member
-  const handleApprove = async (memberId: number) => {
+  // Handle approve member with role selection
+  const handleApprove = async (memberId: number, approvedRole?: 'admin' | 'interviewer') => {
     if (!selectedOrgId) return
+
+    // Default to interviewer if no role specified
+    const role = approvedRole || 'interviewer'
 
     try {
       await approveMemberMutation.mutateAsync({
         orgId: selectedOrgId,
-        data: { member_id: memberId, action: 'approve' },
+        data: {
+          member_id: memberId,
+          action: 'approve',
+          approved_role: role,
+        },
       })
       refetchMembers()
     } catch (error) {
@@ -199,20 +207,50 @@ export default function OrganizationMembers() {
         // Only show actions for admins
         if (!isAdmin) return <span className="text-gray-400">-</span>
 
-        // Pending members: show approve/reject
+        // Pending members: show approve/reject with role selection
         if (record.role === 'pending') {
           return (
             <div className="flex items-center justify-center gap-2">
-              <Button
-                variant="success"
-                size="sm"
-                icon={<CheckCircle className="w-3.5 h-3.5" />}
-                onClick={() => handleApprove(record.id)}
-                loading={approveMemberMutation.isPending}
-                className="whitespace-nowrap"
-              >
-                批准
-              </Button>
+              {/* 创建者可以批准为管理员或面试官 */}
+              {isCreator && (
+                <>
+                  <Button
+                    variant="success"
+                    size="sm"
+                    icon={<Shield className="w-3.5 h-3.5" />}
+                    onClick={() => handleApprove(record.id, 'admin')}
+                    loading={approveMemberMutation.isPending}
+                    className="whitespace-nowrap"
+                    title="批准为管理员"
+                  >
+                    批准为管理员
+                  </Button>
+                  <Button
+                    variant="success"
+                    size="sm"
+                    icon={<CheckCircle className="w-3.5 h-3.5" />}
+                    onClick={() => handleApprove(record.id, 'interviewer')}
+                    loading={approveMemberMutation.isPending}
+                    className="whitespace-nowrap"
+                    title="批准为面试官"
+                  >
+                    批准为面试官
+                  </Button>
+                </>
+              )}
+              {/* 管理员只能批准为面试官 */}
+              {!isCreator && (
+                <Button
+                  variant="success"
+                  size="sm"
+                  icon={<CheckCircle className="w-3.5 h-3.5" />}
+                  onClick={() => handleApprove(record.id, 'interviewer')}
+                  loading={approveMemberMutation.isPending}
+                  className="whitespace-nowrap"
+                >
+                  批准为面试官
+                </Button>
+              )}
               <Button
                 variant="danger"
                 size="sm"
@@ -229,18 +267,26 @@ export default function OrganizationMembers() {
 
         // Approved members: show role change and remove (except creator)
         if (record.role !== 'pending' && record.role !== 'creator') {
+          // 根据当前用户角色过滤可选角色
+          const roleOptions = isCreator
+            ? [
+                { value: 'admin', label: '管理员' },
+                { value: 'interviewer', label: '面试官' },
+              ]
+            : [
+                { value: 'interviewer', label: '面试官' }, // 管理员只能设置为面试官
+              ]
+
           return (
             <div className="flex items-center justify-center gap-2">
               {/* Role change dropdown */}
               <SelectDropdown
-                options={[
-                  { value: 'admin', label: '管理员' },
-                  { value: 'interviewer', label: '面试官' },
-                ]}
+                options={roleOptions}
                 value={record.role}
                 onChange={(value) => handleRoleUpdate(record.id, value as MemberRole)}
                 placeholder="角色"
                 size="sm"
+                disabled={!isCreator && record.role === 'admin'} // 管理员不能修改其他管理员的角色
               />
               <Button
                 variant="danger"

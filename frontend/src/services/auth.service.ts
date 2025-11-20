@@ -84,7 +84,7 @@ export interface CurrentUser {
   email: string
   name: string
   org_id: string | null
-  org_role: 'admin' | 'member' | null
+  org_role: 'creator' | 'admin' | 'interviewer' | 'pending' | null
   is_admin: boolean
 }
 
