@@ -3,17 +3,34 @@
  * 应用侧边栏导航
  */
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Users, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react'
-
-const navigation = [
-  { name: '人才库', href: '/candidates', icon: Users },
-  { name: '职位管理', href: '/positions', icon: Briefcase },
-]
+import { Users, Briefcase, ChevronLeft, ChevronRight, Settings } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
+  const { currentUser, currentOrg } = useAuth()
+
+  // 根据用户角色动态生成导航菜单
+  const navigation = useMemo(() => {
+    const baseNavigation = [
+      { name: '人才库', href: '/candidates', icon: Users },
+      { name: '职位管理', href: '/positions', icon: Briefcase },
+    ]
+
+    // 只有 creator 和 admin 可以看到组织管理
+    const isAdmin = currentUser?.org_role === 'creator' || currentUser?.org_role === 'admin'
+    if (isAdmin && currentOrg) {
+      baseNavigation.push({
+        name: '组织管理',
+        href: `/organizations/${currentOrg.id}/members`,
+        icon: Settings,
+      })
+    }
+
+    return baseNavigation
+  }, [currentUser?.org_role, currentOrg])
 
   return (
     <div className={`${collapsed ? 'w-16' : 'w-64'} bg-gradient-to-b from-orange-500 to-orange-600 text-white flex flex-col transition-all duration-300`}>

@@ -90,3 +90,4 @@ backend/test_*.py
 backend/check_*.py
 backend/verify_*.py
 backend/final_*.py
+/data/evaluation

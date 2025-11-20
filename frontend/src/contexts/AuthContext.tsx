@@ -12,10 +12,8 @@ import {
   type AuthResponse,
   type CurrentUser,
 } from '../services/auth.service'
-import {
-  organizationService,
-  type OrganizationWithRole,
-} from '../services/organization.service'
+import { organizationService } from '../services/organization.service'
+import type { OrganizationWithRole } from '@/types'
 
 /**
  * 认证上下文类型
@@ -64,10 +62,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userData = await authService.getCurrentUser()
       setCurrentUser(userData)
 
-      // 同时更新本地存储的用户基本信息
+      // 同步更新 localStorage 中的用户信息（特别是 current_org_id）
       const storedUser = authService.getStoredUser()
       if (storedUser) {
-        setUser(storedUser)
+        // 如果 current_org_id 发生变化，更新 localStorage
+        if (userData.org_id !== storedUser.current_org_id) {
+          const updatedUser = {
+            ...storedUser,
+            current_org_id: userData.org_id,
+          }
+          localStorage.setItem('user', JSON.stringify(updatedUser))
+          setUser(updatedUser)
+          console.log('Updated user current_org_id in localStorage:', userData.org_id)
+        } else {
+          setUser(storedUser)
+        }
       }
 
       // 验证成功，设置为已认证

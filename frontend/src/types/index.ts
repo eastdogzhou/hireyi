@@ -19,7 +19,6 @@ export type {
   CandidateStatus,
   CandidateScore,
   InterviewRound,
-  MemberStatus,
   MemberRole,
   // v2.0: Interview Feedback types
   InterviewerType,

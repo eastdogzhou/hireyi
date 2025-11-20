@@ -262,7 +262,7 @@ class OrganizationService:
         :raises ValueError: If user is not admin or member not found.
         """
         try:
-            # Verify admin status (creator or admin role)
+            # Verify admin status and get approver's role
             admin_check = (
                 self.supabase.table("org_members")
                 .select("role")
@@ -274,6 +274,8 @@ class OrganizationService:
 
             if not admin_check.data:
                 raise ValueError("You do not have admin permissions")
+
+            approver_role = admin_check.data[0]["role"]
 
             # Get member details
             member_response = (
@@ -295,9 +297,34 @@ class OrganizationService:
                 )
 
             if request.action == "approve":
-                # Approve: change role from 'pending' to 'interviewer' (default approved role)
+                # Determine approved role (default: interviewer)
+                approved_role = request.approved_role or "interviewer"
+
+                # Hierarchical permission check:
+                # - Creator can approve as admin or interviewer
+                # - Admin can only approve as interviewer
+                if approved_role == "admin" and approver_role != "creator":
+                    raise ValueError(
+                        "Only organization creator can approve members as admin. "
+                        "Regular admins can only approve as interviewer."
+                    )
+
+                # Check admin limit when approving as admin
+                if approved_role == "admin":
+                    admin_count = (
+                        self.supabase.table("org_members")
+                        .select("id", count="exact")
+                        .eq("org_id", org_id)
+                        .eq("role", "admin")
+                        .execute()
+                    )
+
+                    if admin_count.count and admin_count.count >= 3:
+                        raise ValueError("Maximum of 3 admins allowed per organization")
+
+                # Approve: change role from 'pending' to approved role
                 update_data = {
-                    "role": "interviewer",
+                    "role": approved_role,
                     "approved_at": datetime.now(UTC).isoformat(),
                     "approved_by": admin_user_id,
                 }
@@ -386,7 +413,7 @@ class OrganizationService:
         :raises ValueError: If user is not admin or validation fails.
         """
         try:
-            # Verify admin status (creator or admin role)
+            # Verify admin status and get admin's role
             admin_check = (
                 self.supabase.table("org_members")
                 .select("role")
@@ -398,6 +425,8 @@ class OrganizationService:
 
             if not admin_check.data:
                 raise ValueError("You do not have admin permissions")
+
+            admin_role = admin_check.data[0]["role"]
 
             # Get member details
             member_response = (
@@ -415,6 +444,15 @@ class OrganizationService:
 
             if member["role"] == "pending":
                 raise ValueError("Cannot update role for pending members (approve them first)")
+
+            # Hierarchical permission check:
+            # - Creator can update to admin or interviewer
+            # - Admin can only update to interviewer
+            if request.new_role == "admin" and admin_role != "creator":
+                raise ValueError(
+                    "Only organization creator can promote members to admin. "
+                    "Regular admins can only assign interviewer role."
+                )
 
             # Check admin limit when promoting to admin
             if request.new_role == "admin":
