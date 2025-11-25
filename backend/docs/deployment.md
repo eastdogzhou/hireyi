@@ -173,9 +173,28 @@ restartPolicyType = "on_failure"
 4. 选择 **"Deploy from GitHub repo"**
 5. 选择你的仓库
 
-#### 3. 配置项目
+#### 3. ⚠️ 配置项目根目录（重要！）
 
-**Root Directory**: \`backend\`（如果 Railway 没有自动检测）
+由于这是一个 monorepo 项目（包含 backend 和 frontend），必须设置 Root Directory：
+
+1. 进入 Railway 项目 → Service Settings
+2. 找到 **"Root Directory"** 设置
+3. 设置为：**`backend`**
+4. 保存设置
+
+**为什么需要设置**：
+- 这样所有构建和部署命令都会在 \`backend\` 目录中运行
+- Railway 会自动检测 \`backend/Procfile\` 文件
+- 避免在命令中重复使用 \`cd backend\`
+
+**Procfile 配置**（可选）：
+
+项目已包含 \`backend/Procfile\`，内容如下：
+\`\`\`
+web: $HOME/.cargo/bin/uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT
+\`\`\`
+
+Railway 会自动检测并使用此文件。如果 Procfile 存在，它的优先级高于 \`railway.toml\` 中的 \`startCommand\`。
 
 #### 4. 配置环境变量
 
@@ -369,7 +388,33 @@ cors_origins: list[str] = Field(
 )
 \`\`\`
 
-### 2. Railway 部署失败：`uvicorn: command not found`
+### 2. Railway 部署失败：`No start command was found`
+
+**问题**: Railway 构建时显示 "No start command could be found"
+
+**原因**:
+- 未设置 Root Directory 为 \`backend\`
+- Railway 无法自动检测启动命令
+
+**解决方案**:
+
+1. **在 Railway 控制台设置 Root Directory**（推荐）:
+   - Railway 项目 → Service Settings
+   - 设置 **Root Directory** = \`backend\`
+   - 保存并重新部署
+
+2. **确保 \`backend/Procfile\` 存在**:
+   \`\`\`
+   web: $HOME/.cargo/bin/uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT
+   \`\`\`
+
+3. **或者使用 \`nixpacks.toml\` 中的 [start] 配置**:
+   \`\`\`toml
+   [start]
+   cmd = "$HOME/.cargo/bin/uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+   \`\`\`
+
+### 3. Railway 部署失败：`uvicorn: command not found`
 
 **问题**: 启动时显示 `/bin/bash: line 1: uvicorn: command not found`
 
@@ -410,7 +455,7 @@ cors_origins: list[str] = Field(
 - 访问 `https://your-app.railway.app/health` 应返回 `{"status": "healthy"}`
 - 访问 `https://your-app.railway.app/docs` 查看 API 文档
 
-### 3. Railway/Render 部署失败（其他原因）
+### 4. Railway/Render 部署失败（其他原因）
 
 **常见原因**:
 
@@ -426,7 +471,7 @@ cors_origins: list[str] = Field(
 - `ModuleNotFoundError` - 依赖缺失
 - `ImportError` - 模块导入失败
 
-### 4. Vercel 构建失败
+### 5. Vercel 构建失败
 
 **常见原因**:
 
@@ -446,7 +491,7 @@ cors_origins: list[str] = Field(
 
 4. **环境变量未配置**: 确保 \`VITE_API_BASE_URL\` 已设置
 
-### 5. API 请求超时
+### 6. API 请求超时
 
 **原因**:
 - Render 免费 tier 冷启动
@@ -458,7 +503,7 @@ cors_origins: list[str] = Field(
 2. 后端启用请求缓存
 3. 考虑升级 Render plan 避免冷启动
 
-### 6. 文件上传失败
+### 7. 文件上传失败
 
 **检查**:
 
@@ -467,7 +512,7 @@ cors_origins: list[str] = Field(
 3. Access Key 是否正确
 4. 文件大小是否超过限制
 
-### 7. 数据库连接失败
+### 8. 数据库连接失败
 
 **检查**:
 
@@ -475,7 +520,7 @@ cors_origins: list[str] = Field(
 2. Supabase 项目是否暂停（免费 tier 1周无活动会暂停）
 3. 网络连接是否正常
 
-### 8. 本地开发时如何使用 uv
+### 9. 本地开发时如何使用 uv
 
 **问题**: 本地开发环境配置
 
