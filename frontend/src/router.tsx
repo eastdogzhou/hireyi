@@ -5,15 +5,15 @@
 
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
-import { ProtectedRoute } from './components/auth/ProtectedRoute'
+import ProtectedRoute from './components/auth/ProtectedRoute'
 
 // Lazy load pages for code splitting
 import { lazy, Suspense } from 'react'
 
 // Auth pages (public)
-import { LoginPage } from './pages/auth/LoginPage'
-import { RegisterPage } from './pages/auth/RegisterPage'
-import { OnboardingPage } from './pages/auth/OnboardingPage'
+import LoginPage from './pages/auth/LoginPage'
+import RegisterPage from './pages/auth/RegisterPage'
+import OnboardingPage from './pages/auth/OnboardingPage'
 
 // Business pages (protected)
 const CandidateList = lazy(() => import('./pages/candidates/CandidateList'))

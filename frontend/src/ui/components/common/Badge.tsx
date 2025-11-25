@@ -17,7 +17,9 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
     | 'warning'
     | 'danger'
     | 'info'
-    | 'gray';
+    | 'gray'
+    | 'secondary'
+    | 'outline';
 
   /**
    * Badge size
@@ -70,6 +72,8 @@ export const Badge: React.FC<BadgeProps> = ({
     danger: 'bg-red-100 text-red-800',
     info: 'bg-blue-100 text-blue-800',
     gray: 'bg-gray-100 text-gray-600',
+    secondary: 'bg-purple-100 text-purple-800',
+    outline: 'bg-white text-gray-700 border border-gray-300',
   };
 
   const sizeStyles = {
@@ -91,6 +95,8 @@ export const Badge: React.FC<BadgeProps> = ({
     danger: 'bg-red-500',
     info: 'bg-blue-500',
     gray: 'bg-gray-400',
+    secondary: 'bg-purple-500',
+    outline: 'bg-gray-500',
   };
 
   return (
