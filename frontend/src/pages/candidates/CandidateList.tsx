@@ -19,7 +19,7 @@ import {
   LoadingSpinner,
   EmptyState,
 } from '@/ui/components/common'
-import { Upload, Plus, UserPlus } from 'lucide-react'
+import { Upload, UserPlus } from 'lucide-react'
 
 export default function CandidateList() {
   const navigate = useNavigate()
@@ -70,11 +70,6 @@ export default function CandidateList() {
     setShowUploadModal(false)
   }
 
-  // Handle create candidate
-  const handleCreateCandidate = () => {
-    // TODO: Implement create candidate modal or navigate to create page
-    alert('新增候选人功能开发中，请先使用"上传简历"功能自动创建候选人')
-  }
 
   // Score options for filter
   const scoreOptions = [

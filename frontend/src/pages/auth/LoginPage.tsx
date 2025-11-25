@@ -10,7 +10,7 @@ import { Button } from '../../ui/components/common/Button'
 import { Input } from '../../ui/components/common/Input'
 import { Alert } from '../../ui/components/common/Alert'
 
-export function LoginPage() {
+export default function LoginPage() {
   const { login, isLoading: authLoading } = useAuth()
   const [formData, setFormData] = useState({
     email: '',

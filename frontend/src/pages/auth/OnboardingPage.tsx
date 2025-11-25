@@ -14,7 +14,7 @@ import { Card } from '../../ui/components/common/Card'
 
 type OnboardingMode = 'select' | 'create' | 'join'
 
-export function OnboardingPage() {
+export default function OnboardingPage() {
   const navigate = useNavigate()
   const { refreshOrganizations, refreshUser, organizations, currentUser } = useAuth()
 
