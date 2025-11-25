@@ -1,0 +1,9 @@
+[phases.setup]
+nixPkgs = ["python311", "gcc"]
+
+[phases.install]
+cmds = [
+    "curl -LsSf https://astral.sh/uv/install.sh | sh",
+    "export PATH=$HOME/.cargo/bin:$PATH",
+    "cd backend && $HOME/.cargo/bin/uv sync"
+]
