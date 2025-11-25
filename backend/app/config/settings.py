@@ -88,6 +88,11 @@ class Settings(BaseSettings):
     aliyun_oss_bucket: str = Field(...)
     aliyun_oss_base_path: str = Field(default="resumes/")
     aliyun_oss_public_read: bool = Field(default=True)
+    aliyun_oss_connect_timeout: int = Field(
+        default=120,
+        gt=0,
+        description="OSS connection timeout in seconds (increase for overseas deployment)",
+    )
 
     # ============================================================================
     # Retry & Resilience
