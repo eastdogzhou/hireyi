@@ -91,3 +91,6 @@ backend/check_*.py
 backend/verify_*.py
 backend/final_*.py
 /data/evaluation
+frontend/e2e/test-deployment.spec.ts
+frontend/e2e/test-real-registration.spec.ts
+/data
