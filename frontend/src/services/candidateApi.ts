@@ -13,8 +13,6 @@ import type {
   BatchUploadResult,
 } from '@/types'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-
 /**
  * Get paginated list of candidates with filters
  * 获取候选人列表（带分页和筛选）

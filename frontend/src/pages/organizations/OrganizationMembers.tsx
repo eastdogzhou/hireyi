@@ -92,7 +92,7 @@ export default function OrganizationMembers() {
   }
 
   // Handle role update
-  const handleRoleUpdate = async (memberId: number, newRole: MemberRole) => {
+  const handleRoleUpdate = async (memberId: number, newRole: 'admin' | 'interviewer' | 'pending') => {
     if (!selectedOrgId) return
 
     try {
@@ -266,7 +266,7 @@ export default function OrganizationMembers() {
         }
 
         // Approved members: show role change and remove (except creator)
-        if (record.role !== 'pending' && record.role !== 'creator') {
+        if (record.role !== 'creator') {
           // 根据当前用户角色过滤可选角色
           const roleOptions = isCreator
             ? [
@@ -283,7 +283,7 @@ export default function OrganizationMembers() {
               <SelectDropdown
                 options={roleOptions}
                 value={record.role}
-                onChange={(value) => handleRoleUpdate(record.id, value as MemberRole)}
+                onChange={(value) => handleRoleUpdate(record.id, value as 'admin' | 'interviewer')}
                 placeholder="角色"
                 size="sm"
                 disabled={!isCreator && record.role === 'admin'} // 管理员不能修改其他管理员的角色

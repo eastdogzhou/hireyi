@@ -357,16 +357,21 @@ cors_origins: list[str] = Field(
 
 **常见原因**:
 
-1. **Node 版本不匹配**: 在 \`package.json\` 指定版本
+1. **Husky git hooks 错误** (\`.git can't be found\`):
+   - **原因**: \`prepare\` 脚本在 CI 环境中尝试安装 git hooks
+   - **解决方案**: 已修改 \`package.json\` 的 \`prepare\` 脚本为 \`"husky || true"\`
+   - \`|| true\` 确保即使 husky 失败也不会中断构建
+
+2. **Node 版本不匹配**: 在 \`package.json\` 指定版本
    \`\`\`json
    "engines": {
      "node": ">=18.0.0"
    }
    \`\`\`
 
-2. **依赖安装失败**: 删除 \`node_modules\` 和 \`package-lock.json\`，重新安装
+3. **依赖安装失败**: 删除 \`node_modules\` 和 \`package-lock.json\`，重新安装
 
-3. **环境变量未配置**: 确保 \`VITE_API_BASE_URL\` 已设置
+4. **环境变量未配置**: 确保 \`VITE_API_BASE_URL\` 已设置
 
 ### 4. API 请求超时
 

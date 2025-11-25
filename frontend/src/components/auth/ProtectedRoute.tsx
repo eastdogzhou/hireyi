@@ -21,7 +21,7 @@ interface ProtectedRouteProps {
  * 3. 如果 requireOrg=true，检查用户是否属于组织
  * 4. 如果用户已登录但没有组织，重定向到组织引导页面
  */
-export function ProtectedRoute({ children, requireOrg = true }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requireOrg = true }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, currentUser } = useAuth()
   const location = useLocation()
 
