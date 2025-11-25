@@ -5,6 +5,7 @@ import logging
 import time
 from typing import Any
 
+import backoff
 import oss2
 
 from app.config.settings import get_settings
@@ -29,28 +30,40 @@ class OSSService:
             settings.aliyun_oss_access_key_secret,
         )
 
-        # Initialize OSS bucket
+        # Initialize OSS bucket with timeout configuration
+        # Increased timeout for overseas deployment (e.g., Railway US -> Aliyun CN)
         self.bucket = oss2.Bucket(
             auth,
             settings.aliyun_oss_endpoint,
             settings.aliyun_oss_bucket,
+            connect_timeout=settings.aliyun_oss_connect_timeout,
         )
 
         self.bucket_name = settings.aliyun_oss_bucket
         self.endpoint = settings.aliyun_oss_endpoint
+        self.connect_timeout = settings.aliyun_oss_connect_timeout
 
         logger.info(
             f"OSSService initialized with bucket: {self.bucket_name}, "
-            f"endpoint: {self.endpoint}"
+            f"endpoint: {self.endpoint}, timeout: {self.connect_timeout}s"
         )
 
+    @backoff.on_exception(
+        backoff.expo,
+        (oss2.exceptions.RequestError, TimeoutError),
+        max_tries=3,
+        max_time=300,
+        on_backoff=lambda details: logger.warning(
+            f"OSS upload retry {details['tries']}/{details['max_tries']}: {details['exception']}"
+        ),
+    )
     def upload_file(
         self,
         file_content: bytes,
         file_name: str,
         subfolder: str = "resumes/",
     ) -> dict[str, Any]:
-        """Upload file to Aliyun OSS.
+        """Upload file to Aliyun OSS with automatic retry on timeout.
 
         :param file_content: Binary content of the file to upload
         :param file_name: Original filename
@@ -61,7 +74,7 @@ class OSSService:
             - file_url (str): Public access URL
             - file_md5 (str): MD5 hash of the file
             - file_size (int): File size in bytes
-        :raises oss2.exceptions.OssError: If OSS operation fails
+        :raises oss2.exceptions.OssError: If OSS operation fails after 3 retries
         """
         try:
             # Calculate MD5 hash
