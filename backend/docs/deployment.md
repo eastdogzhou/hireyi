@@ -101,7 +101,7 @@ npm run build
 点击 **"Deploy"** 按钮，等待构建完成（约 1-2 分钟）。
 
 部署成功后，Vercel 会提供：
-- 生产环境 URL: \`https://your-project.vercel.app\`
+- 生产环境 URL: \`https://hireyi.vercel.app\`
 - 预览 URL: \`https://your-project-git-branch.vercel.app\`
 
 #### 6. 自定义域名（可选）
@@ -129,18 +129,41 @@ npm run build
 
 #### 1. 准备 Railway 配置文件
 
-在项目根目录创建 \`railway.toml\`：
+⚠️ **重要**: 本项目使用 **uv** 作为 Python 依赖管理工具（而非传统的 pip + requirements.txt）。
+
+在项目根目录创建两个配置文件：
+
+**nixpacks.toml** (配置构建环境):
+
+\`\`\`toml
+[phases.setup]
+nixPkgs = ["python311", "gcc"]
+
+[phases.install]
+cmds = [
+    "curl -LsSf https://astral.sh/uv/install.sh | sh",
+    "export PATH=$HOME/.cargo/bin:$PATH",
+    "cd backend && $HOME/.cargo/bin/uv sync"
+]
+\`\`\`
+
+**railway.toml** (配置部署):
 
 \`\`\`toml
 [build]
 builder = "nixpacks"
 
 [deploy]
-startCommand = "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+startCommand = "cd backend && $HOME/.cargo/bin/uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
 \`\`\`
+
+**关键点**：
+- 使用 \`nixpacks.toml\` 安装 uv 工具并同步依赖
+- 启动命令必须使用 \`uv run\` 来执行 uvicorn
+- uv 安装在 \`$HOME/.cargo/bin/\` 路径下
 
 #### 2. 创建 Railway 项目
 
@@ -295,10 +318,15 @@ ALIYUN_OSS_PUBLIC_READ=true
 ### 后端部署
 
 - [ ] 部署平台已选择（Railway/Render/服务器）
+- [ ] **Railway 配置文件已创建**:
+  - [ ] \`nixpacks.toml\` 存在（配置 uv 安装）
+  - [ ] \`railway.toml\` 存在（配置启动命令）
+  - [ ] 启动命令使用 \`uv run uvicorn\`
 - [ ] 所有环境变量已配置
 - [ ] 健康检查端点正常（\`/health\`）
 - [ ] API 文档可访问（\`/docs\`）
 - [ ] CORS 配置正确（允许前端域名）
+- [ ] 部署日志无错误（无 \`uvicorn: command not found\`）
 
 ### 功能测试
 
@@ -341,19 +369,64 @@ cors_origins: list[str] = Field(
 )
 \`\`\`
 
-### 2. Railway/Render 部署失败
+### 2. Railway 部署失败：`uvicorn: command not found`
+
+**问题**: 启动时显示 `/bin/bash: line 1: uvicorn: command not found`
+
+**原因**:
+- 启动命令没有使用 `uv run`
+- 缺少 `nixpacks.toml` 配置文件
+- uv 工具未正确安装
+
+**解决方案**:
+
+1. **确保 `nixpacks.toml` 存在** (项目根目录):
+   \`\`\`toml
+   [phases.setup]
+   nixPkgs = ["python311", "gcc"]
+
+   [phases.install]
+   cmds = [
+       "curl -LsSf https://astral.sh/uv/install.sh | sh",
+       "export PATH=$HOME/.cargo/bin:$PATH",
+       "cd backend && $HOME/.cargo/bin/uv sync"
+   ]
+   \`\`\`
+
+2. **确保 `railway.toml` 启动命令正确**:
+   \`\`\`toml
+   [deploy]
+   startCommand = "cd backend && $HOME/.cargo/bin/uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+   \`\`\`
+
+3. **提交配置并重新部署**:
+   \`\`\`bash
+   git add nixpacks.toml railway.toml
+   git commit -m "fix: configure Railway deployment with uv"
+   git push
+   \`\`\`
+
+**验证部署成功**:
+- 访问 `https://your-app.railway.app/health` 应返回 `{"status": "healthy"}`
+- 访问 `https://your-app.railway.app/docs` 查看 API 文档
+
+### 3. Railway/Render 部署失败（其他原因）
 
 **常见原因**:
 
-1. **依赖安装失败**: 检查 \`requirements.txt\` 是否正确
-2. **启动命令错误**: 确认 \`PORT\` 环境变量正确使用
+1. **依赖安装失败**: 检查 `pyproject.toml` 中的依赖是否正确
+2. **启动命令错误**: 确认 `PORT` 环境变量正确使用
 3. **内存不足**: 考虑升级 plan
+4. **Python 版本不匹配**: 确保使用 Python 3.11+
 
 **调试方法**:
 
-查看部署日志，搜索错误关键词。
+查看 Railway 部署日志，搜索错误关键词：
+- `Error:` - 构建或启动错误
+- `ModuleNotFoundError` - 依赖缺失
+- `ImportError` - 模块导入失败
 
-### 3. Vercel 构建失败
+### 4. Vercel 构建失败
 
 **常见原因**:
 
@@ -373,7 +446,7 @@ cors_origins: list[str] = Field(
 
 4. **环境变量未配置**: 确保 \`VITE_API_BASE_URL\` 已设置
 
-### 4. API 请求超时
+### 5. API 请求超时
 
 **原因**:
 - Render 免费 tier 冷启动
@@ -385,7 +458,7 @@ cors_origins: list[str] = Field(
 2. 后端启用请求缓存
 3. 考虑升级 Render plan 避免冷启动
 
-### 5. 文件上传失败
+### 6. 文件上传失败
 
 **检查**:
 
@@ -394,7 +467,7 @@ cors_origins: list[str] = Field(
 3. Access Key 是否正确
 4. 文件大小是否超过限制
 
-### 6. 数据库连接失败
+### 7. 数据库连接失败
 
 **检查**:
 
@@ -402,10 +475,43 @@ cors_origins: list[str] = Field(
 2. Supabase 项目是否暂停（免费 tier 1周无活动会暂停）
 3. 网络连接是否正常
 
+### 8. 本地开发时如何使用 uv
+
+**问题**: 本地开发环境配置
+
+**解决方案**:
+
+1. **安装 uv**:
+   \`\`\`bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   \`\`\`
+
+2. **同步依赖**:
+   \`\`\`bash
+   cd backend
+   uv sync
+   \`\`\`
+
+3. **运行开发服务器**:
+   \`\`\`bash
+   uv run uvicorn app.main:app --reload --port 8000
+   \`\`\`
+
+4. **运行测试**:
+   \`\`\`bash
+   uv run pytest
+   \`\`\`
+
+**注意**:
+- 始终使用 \`uv run\` 执行 Python 命令
+- 不要直接使用 \`python\` 或 \`pip\` 命令
+- 依赖定义在 \`pyproject.toml\` 中，不是 \`requirements.txt\`
+
 ---
 
 ## 更新日志
 
 | 日期 | 版本 | 说明 |
 |------|------|------|
+| 2025-01-25 | 1.1 | 更新 Railway 部署配置，添加 uv 工具支持和故障排除 |
 | 2025-10-22 | 1.0 | 初始版本 |
