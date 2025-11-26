@@ -1,8 +1,9 @@
 # AI Resume Scanning System - Backend
 
-> 📅 最后更新: 2025-01-27
+> 📅 最后更新: 2025-11-25
 > 📊 完成度: 100%
-> 🎯 状态: 核心功能与认证系统已完成，可用于生产环境（数据库 Schema v2.0）
+> 🎯 状态: 已部署到 Railway 生产环境
+> 🌐 在线访问: https://surprising-endurance-production.up.railway.app
 
 AI-powered resume management and talent screening platform backend.
 
@@ -60,10 +61,33 @@ AI-powered resume management and talent screening platform backend.
 | **Database** | Supabase (PostgreSQL) |
 | **AI/LLM** | LiteLLM (OpenAI, DeepSeek, etc.) |
 | **PDF Parsing** | PyMuPDF (fitz) |
-| **Storage** | Aliyun OSS |
+| **Storage** | Aliyun OSS (with timeout optimization) |
 | **Testing** | pytest + pytest-asyncio (135 tests, 78% coverage) |
 | **Code Quality** | ruff + basedpyright + pre-commit |
 | **Dependency Management** | uv (Python 3.11+) |
+
+### 🌍 Production Deployment Configuration
+
+**Platform**: Railway (Overseas Deployment)
+
+**Critical Settings for Overseas → China OSS Connection**:
+- **OSS Connection Timeout**: 120s (default, configurable via `ALIYUN_OSS_CONNECT_TIMEOUT`)
+- **Retry Mechanism**: 3 retries with exponential backoff (max 300s total)
+- **Network Optimization**: Handles high latency between Railway US and Aliyun CN
+
+**Environment Variables**:
+```bash
+# OSS Configuration (Critical for production)
+ALIYUN_OSS_CONNECT_TIMEOUT=120  # Increase for cross-region stability
+ALIYUN_OSS_ENDPOINT=https://oss-cn-shanghai.aliyuncs.com
+ALIYUN_OSS_BUCKET=your-bucket-name
+
+# Application
+ENVIRONMENT=production
+CORS_ORIGINS=["https://hireyi.vercel.app"]
+```
+
+See [Deployment Guide](../docs/deployment.md) for complete deployment instructions.
 
 ---
 
