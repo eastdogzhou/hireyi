@@ -2,8 +2,9 @@
 
 This module provides high-level resume parsing functionality by:
 1. Using PyMuPDF for high-quality PDF text extraction
-2. Using LLM for semantic information extraction and structuring
-3. Handling errors gracefully with retry mechanisms
+2. Using document_parser for multi-format document parsing (DOCX/HTML/MD)
+3. Using LLM for semantic information extraction and structuring
+4. Handling errors gracefully with retry mechanisms
 """
 
 import json
@@ -14,6 +15,11 @@ from typing import Any
 
 from ..llm.client import text_complete
 from ..llm.prompts import RESUME_PARSING_PROMPT
+from .document_parser import (
+    DocumentParseError,
+    detect_file_format,
+    parse_document_with_unstructured,
+)
 from .pymupdf_parser import (
     PyMuPDFParseError,
     extract_text_from_pymupdf_output,
@@ -56,12 +62,16 @@ class ResumeParser:
     async def parse_resume(
         self,
         file_content: bytes | str,
+        file_name: str | None = None,
         model: str | None = None,
         temperature: float | None = None,
     ) -> dict[str, Any]:
         """Parse resume from file content or path.
 
+        Supports multiple formats: PDF, DOCX, HTML, Markdown.
+
         :param file_content: Resume file content (bytes) or file path (str)
+        :param file_name: Original file name (used for format detection)
         :param model: LLM model to use (defaults to instance default)
         :param temperature: LLM temperature (defaults to instance default)
         :return: Structured candidate data dict
@@ -73,21 +83,31 @@ class ResumeParser:
         # If bytes provided, write to temporary file
         if isinstance(file_content, bytes):
             try:
-                # Create temporary file with .pdf extension
+                # Detect file format to determine appropriate suffix
+                suffix = ".pdf"  # Default to PDF
+                if file_name:
+                    detected_suffix = Path(file_name).suffix
+                    if detected_suffix:
+                        suffix = detected_suffix
+
+                # Create temporary file with detected extension
                 with tempfile.NamedTemporaryFile(
                     mode="wb",
-                    suffix=".pdf",
+                    suffix=suffix,
                     delete=False,
                 ) as tmp_file:
                     tmp_file.write(file_content)
                     tmp_path = tmp_file.name
 
-                logger.debug(f"Wrote bytes to temporary file: {tmp_path}")
+                logger.debug(
+                    f"Wrote bytes to temporary file: {tmp_path} (format: {suffix})"
+                )
 
                 # Parse using temporary file path
                 try:
                     result = await parse_resume_function(
                         file_path=tmp_path,
+                        file_name=file_name,
                         model=model,
                         temperature=temperature,
                         max_retries=self.max_retries,
@@ -105,6 +125,7 @@ class ResumeParser:
         # File path provided directly
         return await parse_resume_function(
             file_path=file_content,
+            file_name=file_name,
             model=model,
             temperature=temperature,
             max_retries=self.max_retries,
@@ -113,15 +134,18 @@ class ResumeParser:
 
 async def parse_resume_function(
     file_path: str,
+    file_name: str | None = None,
     model: str = "openrouter/openai/gpt-4o",
     temperature: float = 0.3,
     max_retries: int = 2,
 ) -> dict[str, Any]:
-    """Parse resume from PDF file and extract structured data.
+    """Parse resume from file and extract structured data.
 
+    Supports multiple formats: PDF, DOCX, HTML, Markdown.
     Internal function. Use ResumeParser.parse_resume() for production code.
 
-    :param file_path: Path to resume PDF (local path or URL)
+    :param file_path: Path to resume file (local path)
+    :param file_name: Original file name (for format detection)
     :param model: LLM model to use (default: gpt-4o)
     :param temperature: LLM temperature (0-1, lower = more deterministic)
     :param max_retries: Maximum retry attempts if parsing fails
@@ -130,17 +154,39 @@ async def parse_resume_function(
     """
     logger.info(f"Starting resume parsing: {file_path}")
 
-    # Step 1: Extract text using PyMuPDF
+    # Step 1: Detect file format
+    if file_name is None:
+        file_name = Path(file_path).name
+    file_format = detect_file_format(file_name=file_name)
+    logger.info(f"Detected file format: {file_format}")
+
+    # Step 2: Extract text using appropriate parser
     try:
-        parser_output = await parse_pdf_with_pymupdf(file_path)
-        resume_text = extract_text_from_pymupdf_output(parser_output)
-        logger.info(f"PyMuPDF extracted {len(resume_text)} characters")
-    except PyMuPDFParseError as e:
-        logger.error(f"PyMuPDF parsing failed: {e}")
-        raise ResumeParseError(f"Failed to extract text from PDF: {e}") from e
+        if file_format == "pdf":
+            # Use PyMuPDF for PDF files
+            parser_output = await parse_pdf_with_pymupdf(file_path)
+            resume_text = extract_text_from_pymupdf_output(parser_output)
+            logger.info(f"PyMuPDF extracted {len(resume_text)} characters")
+
+        elif file_format in ("docx", "doc", "html", "markdown", "text"):
+            # Use document_parser for other formats
+            resume_text = await parse_document_with_unstructured(
+                file_path, file_format=file_format
+            )
+            logger.info(f"Document parser extracted {len(resume_text)} characters")
+
+        else:
+            # Unknown format - try to detect from file content
+            logger.warning(f"Unknown format '{file_format}', attempting auto-detection")
+            resume_text = await parse_document_with_unstructured(file_path)
+            logger.info(f"Auto-detected parser extracted {len(resume_text)} characters")
+
+    except (PyMuPDFParseError, DocumentParseError) as e:
+        logger.error(f"Document parsing failed: {e}")
+        raise ResumeParseError(f"Failed to extract text from file: {e}") from e
     except Exception as e:
-        logger.error(f"Unexpected PDF parsing error: {e}")
-        raise ResumeParseError(f"Failed to extract text from PDF: {e}") from e
+        logger.error(f"Unexpected parsing error: {e}")
+        raise ResumeParseError(f"Failed to extract text from file: {e}") from e
 
     if not resume_text or len(resume_text) < 50:
         raise ResumeParseError("Extracted text is too short or empty")
