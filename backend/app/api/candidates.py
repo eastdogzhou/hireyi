@@ -324,13 +324,18 @@ async def upload_resume(
     if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Filename is required",
+            detail="文件名不能为空",
         )
 
-    if not file.filename.lower().endswith(".pdf"):
+    # Support multiple formats: PDF, DOCX, DOC, HTML, Markdown
+    SUPPORTED_FORMATS = {".pdf", ".doc", ".docx", ".html", ".htm", ".md", ".markdown"}
+    file_ext = Path(file.filename).suffix.lower()
+
+    if file_ext not in SUPPORTED_FORMATS:
+        supported_list = ", ".join(sorted(SUPPORTED_FORMATS))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF files are supported",
+            detail=f"不支持的文件格式 '{file_ext}'。支持的格式: {supported_list}",
         )
 
     try:
