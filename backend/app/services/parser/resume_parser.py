@@ -160,7 +160,7 @@ async def parse_resume_function(
     file_format = detect_file_format(file_name=file_name)
     logger.info(f"Detected file format: {file_format}")
 
-    # Step 2: Extract text using appropriate parser
+    # Step 2: Extract text using appropriate parser (or use Vision LLM for images)
     try:
         if file_format == "pdf":
             # Use PyMuPDF for PDF files
@@ -174,6 +174,28 @@ async def parse_resume_function(
                 file_path, file_format=file_format
             )
             logger.info(f"Document parser extracted {len(resume_text)} characters")
+
+        elif file_format in ("jpeg", "png", "gif", "webp", "bmp", "tiff"):
+            # Use Vision LLM for image formats - direct extraction without OCR
+            from .image_parser import parse_image_resume
+
+            logger.info(f"Using Vision LLM for image format: {file_format}")
+
+            # Read image file content
+            with open(file_path, "rb") as f:
+                image_content = f.read()
+
+            # Call image parser (includes LLM extraction)
+            candidate_data = await parse_image_resume(
+                file_content=image_content,
+                file_name=file_name,
+                model=model,
+                temperature=temperature,
+                max_retries=max_retries,
+            )
+
+            # Image parser already returns structured data, return directly
+            return candidate_data
 
         else:
             # Unknown format - try to detect from file content
