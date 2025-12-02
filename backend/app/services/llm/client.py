@@ -28,7 +28,7 @@ class TextResponse:
 
 async def text_complete(
     model_name: str,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, str | list[dict]]],
     **kwargs: Any,
 ) -> TextResponse:
     """Perform async text completion using LiteLLM.
@@ -40,8 +40,14 @@ async def text_complete(
     - Google (gemini-pro, etc.)
     - And many more...
 
+    Supports both text-only and multimodal (vision) requests.
+
     :param model_name: Model identifier (e.g., "gpt-4", "deepseek/deepseek-chat")
-    :param messages: List of message dicts with 'role' and 'content' keys
+    :param messages: List of message dicts with 'role' and 'content' keys.
+        Content can be:
+        - str: For text-only messages
+        - list[dict]: For multimodal messages (text + images)
+          Example: [{"type": "text", "text": "..."}, {"type": "image_url", "image_url": {...}}]
     :param kwargs: Additional arguments passed to litellm.acompletion
         - temperature: Sampling temperature (0-2)
         - max_tokens: Maximum tokens to generate
@@ -50,13 +56,27 @@ async def text_complete(
     :return: TextResponse with generated content and metadata
     :raises Exception: If the LLM API call fails
 
-    Example::
+    Example (text-only)::
 
         messages = [
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": "Hello!"}
         ]
         response = await text_complete("gpt-4", messages, temperature=0.7)
+        print(response.content)
+
+    Example (multimodal/vision)::
+
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "What's in this image?"},
+                    {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}}
+                ]
+            }
+        ]
+        response = await text_complete("gpt-4o", messages)
         print(response.content)
     """
     from litellm import Choices, acompletion
@@ -81,7 +101,7 @@ async def text_complete(
 
 async def stream_text_complete(
     model_name: str,
-    messages: list[dict[str, str]],
+    messages: list[dict[str, str | list[dict]]],
     **kwargs: Any,
 ) -> AsyncIterable[str | dict[str, Any]]:
     """Stream text completion, yielding chunks as they arrive.
@@ -91,8 +111,11 @@ async def stream_text_complete(
 
     The final yield is an empty dict (metadata placeholder).
 
+    Supports both text-only and multimodal (vision) requests.
+
     :param model_name: Model identifier (e.g., "gpt-4", "deepseek/deepseek-chat")
-    :param messages: List of message dicts with 'role' and 'content' keys
+    :param messages: List of message dicts with 'role' and 'content' keys.
+        Content can be str (text) or list[dict] (multimodal)
     :param kwargs: Additional arguments passed to litellm.acompletion
     :return: AsyncIterable yielding text chunks (str) or metadata (dict when finished)
 
