@@ -327,8 +327,12 @@ async def upload_resume(
             detail="文件名不能为空",
         )
 
-    # Support multiple formats: PDF, DOCX, DOC, HTML, Markdown
-    SUPPORTED_FORMATS = {".pdf", ".doc", ".docx", ".html", ".htm", ".md", ".markdown"}
+    # Support multiple formats: PDF, DOCX, DOC, HTML, Markdown, Images
+    SUPPORTED_FORMATS = {
+        ".pdf", ".doc", ".docx",  # Document formats
+        ".html", ".htm", ".md", ".markdown",  # Web/Markdown formats
+        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".tif"  # Image formats
+    }
     file_ext = Path(file.filename).suffix.lower()
 
     if file_ext not in SUPPORTED_FORMATS:
