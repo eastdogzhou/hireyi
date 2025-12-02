@@ -30,13 +30,13 @@ AI-powered resume management and talent screening platform backend.
 ### Core Features
 - 🔐 **Authentication & Authorization**: JWT-based authentication with Supabase Auth integration
 - 🏢 **Multi-tenant Architecture**: Organization-based data isolation with role-based access control (RBAC)
-- 🤖 **AI-Powered Resume Parsing**: PyMuPDF for high-quality PDF extraction + LLM for semantic analysis
+- 🤖 **AI-Powered Resume Parsing**: Multi-format support (PDF, DOCX, HTML, Markdown, **Images**) with Vision LLM for image parsing
 - 🎯 **Intelligent Job Matching**: LLM-based candidate scoring with relevance and fit dimensions
 - 📊 **Candidate Management**: Complete CRUD with search, filtering, and batch operations
 - 💼 **Position Management**: Job posting management with status tracking
 - 📝 **Interview Feedback**: Multi-round interview evaluations and status change tracking
 - 📁 **File Storage**: Aliyun OSS integration for resume file storage
-- 🔄 **Unified LLM Integration**: LiteLLM wrapper supporting 100+ model providers
+- 🔄 **Unified LLM Integration**: LiteLLM wrapper supporting 100+ model providers (including Doubao Vision)
 - ⚡ **Async First**: Built with FastAPI and async/await for high performance
 - 🔒 **Type Safe**: Full type annotations with basedpyright checking
 
@@ -162,11 +162,18 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 OPENAI_API_KEY=sk-...
 # or
 DEEPSEEK_API_KEY=...
+# or (for Doubao Vision model)
+VOLCENGINE_API_KEY=your-volcengine-key
 
-# Default model for parsing and matching
+# Default model for text resume parsing and matching
 DEFAULT_LLM_MODEL=gpt-4o
 # or
 # DEFAULT_LLM_MODEL=deepseek/deepseek-chat
+
+# Vision LLM model for image resume parsing
+VISION_LLM_MODEL=volcengine/doubao-vision-pro
+# or use GPT-4o as fallback
+# VISION_LLM_MODEL=openrouter/openai/gpt-4o
 
 # ============================================================================
 # Aliyun OSS Configuration
