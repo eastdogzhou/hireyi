@@ -39,7 +39,7 @@ def detect_file_format(
 
     :param file_name: Original file name with extension
     :param file_content: File content as bytes (optional, for MIME detection)
-    :return: Format string: "pdf" | "docx" | "doc" | "html" | "markdown" | "unknown"
+    :return: Format string: "pdf" | "docx" | "doc" | "html" | "markdown" | "jpeg" | "png" | "gif" | "webp" | "bmp" | "unknown"
     """
     # Step 1: File extension detection (fast path)
     if file_name:
@@ -53,6 +53,15 @@ def detect_file_format(
             ".md": "markdown",
             ".markdown": "markdown",
             ".txt": "text",
+            # Image formats
+            ".jpg": "jpeg",
+            ".jpeg": "jpeg",
+            ".png": "png",
+            ".gif": "gif",
+            ".webp": "webp",
+            ".bmp": "bmp",
+            ".tiff": "tiff",
+            ".tif": "tiff",
         }
         if file_ext in extension_map:
             logger.debug(f"Detected format by extension: {file_ext} -> {extension_map[file_ext]}")
@@ -71,6 +80,13 @@ def detect_file_format(
                 "text/html": "html",
                 "text/markdown": "markdown",
                 "text/plain": "text",
+                # Image formats
+                "image/jpeg": "jpeg",
+                "image/png": "png",
+                "image/gif": "gif",
+                "image/webp": "webp",
+                "image/bmp": "bmp",
+                "image/tiff": "tiff",
             }
 
             for mime_pattern, format_type in mime_map.items():
