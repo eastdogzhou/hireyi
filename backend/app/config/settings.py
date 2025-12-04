@@ -54,10 +54,10 @@ class Settings(BaseSettings):
     llm_max_tokens: int = Field(default=2000, gt=0)
     llm_timeout: int = Field(default=60, gt=0)
 
-    # Vision LLM Configuration (for image resume parsing)
-    vision_llm_model: str = Field(
-        default="volcengine/doubao-vision-pro",
-        description="Vision LLM model for image resume parsing"
+    # Image Resume Parsing Configuration
+    img_resume_model: str = Field(
+        default="volcengine/doubao-seed-1.6-vision",
+        description="Vision LLM model for image resume parsing (e.g., volcengine/doubao-seed-1.6-vision)"
     )
 
     # OpenAI API Key

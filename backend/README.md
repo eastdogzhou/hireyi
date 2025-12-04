@@ -171,9 +171,9 @@ DEFAULT_LLM_MODEL=gpt-4o
 # DEFAULT_LLM_MODEL=deepseek/deepseek-chat
 
 # Vision LLM model for image resume parsing
-VISION_LLM_MODEL=volcengine/doubao-vision-pro
+IMG_RESUME_MODEL=volcengine/doubao-seed-1.6-vision
 # or use GPT-4o as fallback
-# VISION_LLM_MODEL=openrouter/openai/gpt-4o
+# IMG_RESUME_MODEL=openrouter/openai/gpt-4o
 
 # ============================================================================
 # Aliyun OSS Configuration
