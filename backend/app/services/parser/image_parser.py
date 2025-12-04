@@ -31,7 +31,7 @@ class ImageParseError(Exception):
 async def parse_image_resume(
     file_content: bytes,
     file_name: str,
-    model: str = "volcengine/doubao-vision-pro",
+    model: str = "volcengine/doubao-seed-1.6-vision",
     temperature: float = 0.3,
     max_retries: int = 2,
 ) -> dict[str, Any]:
@@ -42,7 +42,7 @@ async def parse_image_resume(
 
     :param file_content: Image file content (bytes)
     :param file_name: Original file name (for logging)
-    :param model: Vision LLM model to use (default: Doubao-vision-pro)
+    :param model: Vision LLM model to use (default: Doubao-Seed-1.6-vision)
     :param temperature: LLM temperature (0-1, lower = more deterministic)
     :param max_retries: Maximum retry attempts if parsing fails
     :return: Structured candidate data dict
@@ -56,7 +56,7 @@ async def parse_image_resume(
         candidate_data = await parse_image_resume(
             file_content=file_content,
             file_name="resume.jpg",
-            model="volcengine/doubao-vision-pro"
+            model="volcengine/doubao-seed-1.6-vision"
         )
 
         print(candidate_data["name"])  # 候选人姓名
