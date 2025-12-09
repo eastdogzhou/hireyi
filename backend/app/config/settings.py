@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     llm_max_tokens: int = Field(default=2000, gt=0)
     llm_timeout: int = Field(default=60, gt=0)
 
+    # Image Resume Parsing Configuration
+    img_resume_model: str = Field(
+        default="volcengine/doubao-seed-1.6-vision",
+        description="Vision LLM model for image resume parsing (e.g., volcengine/doubao-seed-1.6-vision)"
+    )
+
     # OpenAI API Key
     openai_api_key: str | None = Field(default=None)
 
@@ -62,6 +68,12 @@ class Settings(BaseSettings):
 
     # Alternative: DeepSeek API Key
     deepseek_api_key: str | None = Field(default=None)
+
+    # Alternative: Volcengine API Key (for Doubao models)
+    volcengine_api_key: str | None = Field(
+        default=None,
+        description="Volcengine (ByteDance) API Key for Doubao models"
+    )
 
     # ============================================================================
     # PyMuPDF Configuration

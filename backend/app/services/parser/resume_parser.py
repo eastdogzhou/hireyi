@@ -2,8 +2,9 @@
 
 This module provides high-level resume parsing functionality by:
 1. Using PyMuPDF for high-quality PDF text extraction
-2. Using LLM for semantic information extraction and structuring
-3. Handling errors gracefully with retry mechanisms
+2. Using document_parser for multi-format document parsing (DOCX/HTML/MD)
+3. Using LLM for semantic information extraction and structuring
+4. Handling errors gracefully with retry mechanisms
 """
 
 import json
@@ -14,6 +15,11 @@ from typing import Any
 
 from ..llm.client import text_complete
 from ..llm.prompts import RESUME_PARSING_PROMPT
+from .document_parser import (
+    DocumentParseError,
+    detect_file_format,
+    parse_document_with_unstructured,
+)
 from .pymupdf_parser import (
     PyMuPDFParseError,
     extract_text_from_pymupdf_output,
@@ -41,56 +47,77 @@ class ResumeParser:
         default_model: str = "openrouter/openai/gpt-4o",
         default_temperature: float = 0.3,
         max_retries: int = 2,
+        img_resume_model: str = "openrouter/openai/gpt-4o",
     ):
         """Initialize resume parser.
 
-        :param default_model: Default LLM model to use
+        :param default_model: Default LLM model to use for text parsing
         :param default_temperature: Default LLM temperature
         :param max_retries: Maximum retry attempts
+        :param img_resume_model: Vision LLM model to use for image resume parsing
         """
         self.default_model = default_model
         self.default_temperature = default_temperature
         self.max_retries = max_retries
-        logger.info(f"ResumeParser initialized with model: {default_model}")
+        self.img_resume_model = img_resume_model
+        logger.info(f"ResumeParser initialized with text model: {default_model}, image model: {img_resume_model}")
 
     async def parse_resume(
         self,
         file_content: bytes | str,
+        file_name: str | None = None,
         model: str | None = None,
         temperature: float | None = None,
+        img_resume_model: str | None = None,
     ) -> dict[str, Any]:
         """Parse resume from file content or path.
 
+        Supports multiple formats: PDF, DOCX, HTML, Markdown, Images.
+
         :param file_content: Resume file content (bytes) or file path (str)
-        :param model: LLM model to use (defaults to instance default)
+        :param file_name: Original file name (used for format detection)
+        :param model: LLM model to use for text parsing (defaults to instance default)
         :param temperature: LLM temperature (defaults to instance default)
+        :param img_resume_model: Vision LLM model for image parsing (defaults to instance default)
         :return: Structured candidate data dict
         :raises ResumeParseError: If parsing fails after retries
         """
         model = model or self.default_model
         temperature = temperature or self.default_temperature
+        img_resume_model = img_resume_model or self.img_resume_model
 
         # If bytes provided, write to temporary file
         if isinstance(file_content, bytes):
             try:
-                # Create temporary file with .pdf extension
+                # Detect file format to determine appropriate suffix
+                suffix = ".pdf"  # Default to PDF
+                if file_name:
+                    detected_suffix = Path(file_name).suffix
+                    if detected_suffix:
+                        suffix = detected_suffix
+
+                # Create temporary file with detected extension
                 with tempfile.NamedTemporaryFile(
                     mode="wb",
-                    suffix=".pdf",
+                    suffix=suffix,
                     delete=False,
                 ) as tmp_file:
                     tmp_file.write(file_content)
                     tmp_path = tmp_file.name
 
-                logger.debug(f"Wrote bytes to temporary file: {tmp_path}")
+                logger.debug(
+                    f"Wrote bytes to temporary file: {tmp_path} (format: {suffix})"
+                )
 
                 # Parse using temporary file path
                 try:
                     result = await parse_resume_function(
                         file_path=tmp_path,
+                        file_name=file_name,
                         model=model,
                         temperature=temperature,
                         max_retries=self.max_retries,
+                        img_resume_model=img_resume_model,
                     )
                     return result
                 finally:
@@ -105,42 +132,93 @@ class ResumeParser:
         # File path provided directly
         return await parse_resume_function(
             file_path=file_content,
+            file_name=file_name,
             model=model,
             temperature=temperature,
             max_retries=self.max_retries,
+            img_resume_model=img_resume_model,
         )
 
 
 async def parse_resume_function(
     file_path: str,
+    file_name: str | None = None,
     model: str = "openrouter/openai/gpt-4o",
     temperature: float = 0.3,
     max_retries: int = 2,
+    img_resume_model: str = "openrouter/openai/gpt-4o",
 ) -> dict[str, Any]:
-    """Parse resume from PDF file and extract structured data.
+    """Parse resume from file and extract structured data.
 
+    Supports multiple formats: PDF, DOCX, HTML, Markdown, Images.
     Internal function. Use ResumeParser.parse_resume() for production code.
 
-    :param file_path: Path to resume PDF (local path or URL)
-    :param model: LLM model to use (default: gpt-4o)
+    :param file_path: Path to resume file (local path)
+    :param file_name: Original file name (for format detection)
+    :param model: LLM model to use for text parsing (default: gpt-4o)
     :param temperature: LLM temperature (0-1, lower = more deterministic)
     :param max_retries: Maximum retry attempts if parsing fails
+    :param img_resume_model: Vision LLM model for image parsing (default: gpt-4o)
     :return: Structured candidate data dict
     :raises ResumeParseError: If parsing fails after retries
     """
     logger.info(f"Starting resume parsing: {file_path}")
 
-    # Step 1: Extract text using PyMuPDF
+    # Step 1: Detect file format
+    if file_name is None:
+        file_name = Path(file_path).name
+    file_format = detect_file_format(file_name=file_name)
+    logger.info(f"Detected file format: {file_format}")
+
+    # Step 2: Extract text using appropriate parser (or use Vision LLM for images)
     try:
-        parser_output = await parse_pdf_with_pymupdf(file_path)
-        resume_text = extract_text_from_pymupdf_output(parser_output)
-        logger.info(f"PyMuPDF extracted {len(resume_text)} characters")
-    except PyMuPDFParseError as e:
-        logger.error(f"PyMuPDF parsing failed: {e}")
-        raise ResumeParseError(f"Failed to extract text from PDF: {e}") from e
+        if file_format == "pdf":
+            # Use PyMuPDF for PDF files
+            parser_output = await parse_pdf_with_pymupdf(file_path)
+            resume_text = extract_text_from_pymupdf_output(parser_output)
+            logger.info(f"PyMuPDF extracted {len(resume_text)} characters")
+
+        elif file_format in ("docx", "doc", "html", "markdown", "text"):
+            # Use document_parser for other formats
+            resume_text = await parse_document_with_unstructured(
+                file_path, file_format=file_format
+            )
+            logger.info(f"Document parser extracted {len(resume_text)} characters")
+
+        elif file_format in ("jpeg", "png", "gif", "webp", "bmp", "tiff"):
+            # Use Vision LLM for image formats - direct extraction without OCR
+            from .image_parser import parse_image_resume
+
+            logger.info(f"Using Vision LLM for image format: {file_format}")
+
+            # Read image file content
+            with open(file_path, "rb") as f:
+                image_content = f.read()
+
+            # Call image parser (includes LLM extraction)
+            candidate_data = await parse_image_resume(
+                file_content=image_content,
+                file_name=file_name,
+                model=img_resume_model,
+                temperature=temperature,
+                max_retries=max_retries,
+            )
+
+            # Image parser already returns structured data, return directly
+            return candidate_data
+
+        else:
+            # Unknown format - try to detect from file content
+            logger.warning(f"Unknown format '{file_format}', attempting auto-detection")
+            resume_text = await parse_document_with_unstructured(file_path)
+            logger.info(f"Auto-detected parser extracted {len(resume_text)} characters")
+
+    except (PyMuPDFParseError, DocumentParseError) as e:
+        logger.error(f"Document parsing failed: {e}")
+        raise ResumeParseError(f"Failed to extract text from file: {e}") from e
     except Exception as e:
-        logger.error(f"Unexpected PDF parsing error: {e}")
-        raise ResumeParseError(f"Failed to extract text from PDF: {e}") from e
+        logger.error(f"Unexpected parsing error: {e}")
+        raise ResumeParseError(f"Failed to extract text from file: {e}") from e
 
     if not resume_text or len(resume_text) < 50:
         raise ResumeParseError("Extracted text is too short or empty")
