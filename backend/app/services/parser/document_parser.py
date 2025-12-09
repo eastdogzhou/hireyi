@@ -14,7 +14,6 @@ import logging
 import tempfile
 from pathlib import Path
 
-import magic
 from bs4 import BeautifulSoup
 from unstructured.partition.auto import partition
 
@@ -70,28 +69,15 @@ def detect_file_format(
     # Step 2: MIME type detection (fallback)
     if file_content:
         try:
-            mime = magic.from_buffer(file_content, mime=True)
-            logger.debug(f"Detected MIME type: {mime}")
-
-            mime_map = {
-                "application/pdf": "pdf",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-                "application/msword": "doc",
-                "text/html": "html",
-                "text/markdown": "markdown",
-                "text/plain": "text",
-                # Image formats
-                "image/jpeg": "jpeg",
-                "image/png": "png",
-                "image/gif": "gif",
-                "image/webp": "webp",
-                "image/bmp": "bmp",
-                "image/tiff": "tiff",
-            }
-
-            for mime_pattern, format_type in mime_map.items():
-                if mime_pattern in mime:
-                    return format_type
+            head = file_content[:8]
+            if head.startswith(b"%PDF"):
+                return "pdf"
+            # ZIP 容器（docx、pptx 等都是 ZIP）
+            if head.startswith(b"PK"):
+                return "docx"
+            # 旧版 Office（OLE）
+            if head.startswith(b"\xd0\xcf\x11\xe0"):
+                return "doc"
 
         except Exception as e:
             logger.warning(f"MIME type detection failed: {e}")
@@ -292,7 +278,7 @@ async def parse_document_from_bytes(
     logger.info(f"Parsing document from bytes: {file_name} ({len(file_content)} bytes)")
 
     # Detect format
-    file_format = detect_file_format(file_name=file_name, file_content=file_content)
+    file_format = detect_file_format(file_name=file_name)
 
     # Create temporary file
     suffix = Path(file_name).suffix
