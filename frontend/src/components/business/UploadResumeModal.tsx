@@ -128,13 +128,13 @@ export const UploadResumeModal: React.FC<UploadResumeModalProps> = ({
             <FileUpload
               name="resumes"
               label="选择简历文件"
-              accept=".pdf"
+              accept=".pdf,.doc,.docx,.html,.htm,.md,.markdown,.jpg,.jpeg,.png,.gif,.webp,.bmp,.tiff,.tif"
               multiple
               maxFiles={20}
               maxSize={10 * 1024 * 1024}
               files={files}
               onChange={handleFileChange}
-              helperText="支持PDF格式，单个文件最大10MB，一次最多上传20个文件"
+              helperText="支持 PDF、Word、HTML、Markdown、图片格式，单个文件最大10MB，一次最多上传20个文件"
             />
           )}
 
