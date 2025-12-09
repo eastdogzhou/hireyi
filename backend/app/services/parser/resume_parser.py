@@ -47,17 +47,20 @@ class ResumeParser:
         default_model: str = "openrouter/openai/gpt-4o",
         default_temperature: float = 0.3,
         max_retries: int = 2,
+        img_resume_model: str = "openrouter/openai/gpt-4o",
     ):
         """Initialize resume parser.
 
-        :param default_model: Default LLM model to use
+        :param default_model: Default LLM model to use for text parsing
         :param default_temperature: Default LLM temperature
         :param max_retries: Maximum retry attempts
+        :param img_resume_model: Vision LLM model to use for image resume parsing
         """
         self.default_model = default_model
         self.default_temperature = default_temperature
         self.max_retries = max_retries
-        logger.info(f"ResumeParser initialized with model: {default_model}")
+        self.img_resume_model = img_resume_model
+        logger.info(f"ResumeParser initialized with text model: {default_model}, image model: {img_resume_model}")
 
     async def parse_resume(
         self,
@@ -65,20 +68,23 @@ class ResumeParser:
         file_name: str | None = None,
         model: str | None = None,
         temperature: float | None = None,
+        img_resume_model: str | None = None,
     ) -> dict[str, Any]:
         """Parse resume from file content or path.
 
-        Supports multiple formats: PDF, DOCX, HTML, Markdown.
+        Supports multiple formats: PDF, DOCX, HTML, Markdown, Images.
 
         :param file_content: Resume file content (bytes) or file path (str)
         :param file_name: Original file name (used for format detection)
-        :param model: LLM model to use (defaults to instance default)
+        :param model: LLM model to use for text parsing (defaults to instance default)
         :param temperature: LLM temperature (defaults to instance default)
+        :param img_resume_model: Vision LLM model for image parsing (defaults to instance default)
         :return: Structured candidate data dict
         :raises ResumeParseError: If parsing fails after retries
         """
         model = model or self.default_model
         temperature = temperature or self.default_temperature
+        img_resume_model = img_resume_model or self.img_resume_model
 
         # If bytes provided, write to temporary file
         if isinstance(file_content, bytes):
@@ -111,6 +117,7 @@ class ResumeParser:
                         model=model,
                         temperature=temperature,
                         max_retries=self.max_retries,
+                        img_resume_model=img_resume_model,
                     )
                     return result
                 finally:
@@ -129,6 +136,7 @@ class ResumeParser:
             model=model,
             temperature=temperature,
             max_retries=self.max_retries,
+            img_resume_model=img_resume_model,
         )
 
 
@@ -138,17 +146,19 @@ async def parse_resume_function(
     model: str = "openrouter/openai/gpt-4o",
     temperature: float = 0.3,
     max_retries: int = 2,
+    img_resume_model: str = "openrouter/openai/gpt-4o",
 ) -> dict[str, Any]:
     """Parse resume from file and extract structured data.
 
-    Supports multiple formats: PDF, DOCX, HTML, Markdown.
+    Supports multiple formats: PDF, DOCX, HTML, Markdown, Images.
     Internal function. Use ResumeParser.parse_resume() for production code.
 
     :param file_path: Path to resume file (local path)
     :param file_name: Original file name (for format detection)
-    :param model: LLM model to use (default: gpt-4o)
+    :param model: LLM model to use for text parsing (default: gpt-4o)
     :param temperature: LLM temperature (0-1, lower = more deterministic)
     :param max_retries: Maximum retry attempts if parsing fails
+    :param img_resume_model: Vision LLM model for image parsing (default: gpt-4o)
     :return: Structured candidate data dict
     :raises ResumeParseError: If parsing fails after retries
     """
@@ -189,7 +199,7 @@ async def parse_resume_function(
             candidate_data = await parse_image_resume(
                 file_content=image_content,
                 file_name=file_name,
-                model=model,
+                model=img_resume_model,
                 temperature=temperature,
                 max_retries=max_retries,
             )
