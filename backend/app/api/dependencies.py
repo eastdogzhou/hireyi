@@ -44,6 +44,7 @@ def get_resume_parser() -> ResumeParser:
         default_model=settings.default_llm_model,
         default_temperature=settings.llm_temperature,
         max_retries=settings.ai_max_retries,
+        img_resume_model=settings.img_resume_model,
     )
 
 

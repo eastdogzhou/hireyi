@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
@@ -324,13 +325,22 @@ async def upload_resume(
     if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Filename is required",
+            detail="文件名不能为空",
         )
 
-    if not file.filename.lower().endswith(".pdf"):
+    # Support multiple formats: PDF, DOCX, DOC, HTML, Markdown, Images
+    SUPPORTED_FORMATS = {
+        ".pdf", ".doc", ".docx",  # Document formats
+        ".html", ".htm", ".md", ".markdown",  # Web/Markdown formats
+        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".tif"  # Image formats
+    }
+    file_ext = Path(file.filename).suffix.lower()
+
+    if file_ext not in SUPPORTED_FORMATS:
+        supported_list = ", ".join(sorted(SUPPORTED_FORMATS))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF files are supported",
+            detail=f"不支持的文件格式 '{file_ext}'。支持的格式: {supported_list}",
         )
 
     try:
@@ -390,7 +400,7 @@ async def upload_resume(
     status_code=status.HTTP_201_CREATED,
 )
 async def batch_upload_resumes(
-    files: list[UploadFile] = File(..., description="Resume files (PDFs)"),
+    files: list[UploadFile] = File(..., description="Resume files (PDF, DOCX, HTML, Markdown, Images)"),
     position_id: int | None = Query(None, description="Optionally link to position"),
     current_user: CurrentUser = Depends(require_organization),
 ) -> BatchUploadResponse:
@@ -415,13 +425,22 @@ async def batch_upload_resumes(
     # Prepare file list
     file_list: list[tuple[bytes, str]] = []
 
+    # Support multiple formats: PDF, DOCX, DOC, HTML, Markdown, Images
+    SUPPORTED_FORMATS = {
+        ".pdf", ".doc", ".docx",  # Document formats
+        ".html", ".htm", ".md", ".markdown",  # Web/Markdown formats
+        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".tif"  # Image formats
+    }
+
     for file in files:
         if not file.filename:
             logger.warning("Skipping file with no filename")
             continue
 
-        if not file.filename.lower().endswith(".pdf"):
-            logger.warning(f"Skipping non-PDF file: {file.filename}")
+        # Validate file format
+        file_ext = Path(file.filename).suffix.lower()
+        if file_ext not in SUPPORTED_FORMATS:
+            logger.warning(f"Skipping unsupported file format: {file.filename} ({file_ext})")
             continue
 
         try:
@@ -431,9 +450,10 @@ async def batch_upload_resumes(
             logger.error(f"Error reading file {file.filename}: {e}")
 
     if not file_list:
+        supported_list = ", ".join(sorted(SUPPORTED_FORMATS))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No valid PDF files provided",
+            detail=f"未提供有效的简历文件。支持的格式: {supported_list}",
         )
 
     try:
