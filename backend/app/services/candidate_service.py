@@ -320,7 +320,10 @@ class CandidateService(BaseService[dict[str, Any]]):
             if auto_parse:
                 try:
                     logger.info("Parsing resume with AI...")
-                    parsed_data = await self.resume_parser.parse_resume(file_content)
+                    parsed_data = await self.resume_parser.parse_resume(
+                        file_content=file_content,
+                        file_name=file_name,
+                    )
                     logger.info("Resume parsed successfully")
 
                     # Step 2.1: Calculate global score based on resume text
@@ -372,6 +375,13 @@ class CandidateService(BaseService[dict[str, Any]]):
             if parsed_data.get("email"):
                 parsed_data["email"] = parsed_data["email"].lower().strip()
                 logger.debug("Normalized email to lowercase")
+
+            # Remove metadata fields that don't belong in database
+            # These are returned by image_parser but not in candidates table schema
+            # Note: resume_text was already used for scoring above, safe to remove now
+            metadata_fields = ["parsed_from_image", "image_mime_type", "resume_text"]
+            for field in metadata_fields:
+                parsed_data.pop(field, None)
 
             # Merge parsed data
             candidate_data.update(parsed_data)
