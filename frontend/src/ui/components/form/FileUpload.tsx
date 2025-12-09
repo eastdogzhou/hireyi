@@ -83,7 +83,7 @@ export interface FileUploadProps {
 export const FileUpload: React.FC<FileUploadProps> = ({
   name,
   label,
-  accept = '.pdf',
+  accept = '',
   multiple = false,
   maxSize = 10 * 1024 * 1024, // 10MB default
   maxFiles = multiple ? 10 : 1,
