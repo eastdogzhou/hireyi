@@ -1,7 +1,7 @@
 """Image resume parser using Vision LLM.
 
 This module provides image-based resume parsing functionality by:
-1. Detecting image format and MIME type
+1. Detecting image format and MIME type using Pillow (PIL)
 2. Encoding image to Base64
 3. Using Vision LLM (multimodal) to extract structured data
 4. Handling errors gracefully with retry mechanisms
@@ -10,11 +10,12 @@ Supported formats: JPEG, PNG, GIF, WEBP, BMP, TIFF
 """
 
 import base64
+import io
 import json
 import logging
 from typing import Any
 
-import magic
+from PIL import Image
 
 from ..llm.client import text_complete
 from ..llm.prompts import RESUME_PARSING_PROMPT
@@ -68,20 +69,31 @@ async def parse_image_resume(
     if not file_content or len(file_content) < 100:
         raise ImageParseError("Image file content is too small or empty")
 
-    # Step 2: Detect MIME type
+    # Step 2: Detect MIME type using Pillow
     try:
-        mime_type = magic.from_buffer(file_content, mime=True)
-        logger.info(f"Detected image MIME type: {mime_type}")
+        # Open image and validate it's a valid image file
+        image = Image.open(io.BytesIO(file_content))
 
-        # Validate it's an image
-        if not mime_type.startswith("image/"):
-            raise ImageParseError(
-                f"File is not an image. Detected MIME type: {mime_type}"
-            )
+        # Get image format (e.g., 'JPEG', 'PNG', 'GIF')
+        image_format = image.format
+        if not image_format:
+            raise ImageParseError("Unable to determine image format")
 
+        # Convert format to MIME type (e.g., 'JPEG' -> 'image/jpeg')
+        format_lower = image_format.lower()
+        # Handle JPEG special case (format is 'JPEG' but MIME uses 'jpeg')
+        if format_lower == "jpeg":
+            mime_type = "image/jpeg"
+        else:
+            mime_type = f"image/{format_lower}"
+
+        logger.info(f"Detected image format: {image_format}, MIME type: {mime_type}")
+
+    except ImageParseError:
+        raise
     except Exception as e:
-        logger.error(f"MIME type detection failed: {e}")
-        raise ImageParseError(f"Failed to detect image format: {e}") from e
+        logger.error(f"Image format detection failed: {e}")
+        raise ImageParseError(f"Failed to detect image format or file is not a valid image: {e}") from e
 
     # Step 3: Encode image to Base64
     try:
