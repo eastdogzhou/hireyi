@@ -94,3 +94,11 @@ backend/final_*.py
 frontend/e2e/test-deployment.spec.ts
 frontend/e2e/test-real-registration.spec.ts
 /data
+
+# Security - NEVER commit sensitive data
+data/resume/
+*.pdf
+!docs/*.pdf
+
+# E2E test files with credentials
+frontend/e2e/ui-fixes-verification.spec.ts

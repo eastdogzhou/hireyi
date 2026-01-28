@@ -9,7 +9,6 @@ Usage:
     uv run python scripts/setup_jwt_secret.py
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -39,7 +38,8 @@ def main() -> int:
     print("📋 Steps to get your Supabase JWT Secret:")
     print()
     print("1. Open your Supabase project dashboard:")
-    print("   https://app.supabase.com/project/vgqhnqcfsonurqgxesni")
+    print("   https://app.supabase.com/project/<YOUR_PROJECT_REF>")
+    print("   (Replace <YOUR_PROJECT_REF> with your Supabase project reference)")
     print()
     print("2. Navigate to: Project Settings → API")
     print()
