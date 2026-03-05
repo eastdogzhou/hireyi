@@ -27,7 +27,10 @@ jobs:
       - name: Prepare pages content
         run: |
           mkdir -p _site
-          cp docs/interview_guide.html _site/index.html
+          cp docs/interview_guide.html _site/interview_guide.html
+          cat > _site/index.html << 'HEREDOC'
+          <!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=interview_guide.html"></head></html>
+          HEREDOC
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
