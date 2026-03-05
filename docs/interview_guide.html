@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HireYI 技术评估任务 — 候选人指南</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --orange-50: #fff7ed;
+    --orange-100: #ffedd5;
+    --orange-200: #fed7aa;
+    --orange-300: #fdba74;
+    --orange-400: #fb923c;
+    --orange-500: #f97316;
+    --orange-600: #ea580c;
+    --orange-700: #c2410c;
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+    --font-sans: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.08);
+    --shadow-xl: 0 20px 60px rgba(0,0,0,0.1);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --radius-lg: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-sans);
+    color: var(--slate-800);
+    background: var(--slate-50);
+    line-height: 1.75;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* === HERO === */
+  .hero {
+    position: relative;
+    padding: 80px 0 60px;
+    background: linear-gradient(135deg, var(--orange-500) 0%, var(--orange-600) 50%, var(--orange-700) 100%);
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 20% 50%, rgba(255,255,255,0.12) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(255,255,255,0.08) 0%, transparent 40%);
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 80px;
+    background: linear-gradient(to top, var(--slate-50), transparent);
+  }
+
+  .hero-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 32px;
+    text-align: center;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 100px;
+    color: rgba(255,255,255,0.95);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    margin-bottom: 24px;
+    backdrop-filter: blur(8px);
+  }
+
+  .hero h1 {
+    font-family: var(--font-sans);
+    font-size: 42px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.25;
+    margin-bottom: 16px;
+    letter-spacing: -0.02em;
+  }
+
+  .hero h1 em {
+    font-style: normal;
+    font-family: var(--font-display);
+    color: var(--orange-100);
+  }
+
+  .hero-subtitle {
+    font-size: 17px;
+    color: rgba(255,255,255,0.85);
+    max-width: 640px;
+    margin: 0 auto 32px;
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  .hero-links {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .hero-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: 100px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .hero-links a.primary {
+    background: #fff;
+    color: var(--orange-600);
+  }
+
+  .hero-links a.primary:hover {
+    background: var(--orange-50);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+
+  .hero-links a.secondary {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    backdrop-filter: blur(8px);
+  }
+
+  .hero-links a.secondary:hover {
+    background: rgba(255,255,255,0.25);
+  }
+
+  /* === LAYOUT === */
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  section {
+    padding: 56px 0;
+  }
+
+  section + section {
+    border-top: 1px solid var(--slate-200);
+  }
+
+  /* === SECTION HEADERS === */
+  .section-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+
+  .section-number {
+    font-family: var(--font-mono);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--orange-400);
+    line-height: 1;
+    letter-spacing: -0.04em;
+    flex-shrink: 0;
+  }
+
+  h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--slate-900);
+    margin-bottom: 0;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+  }
+
+  .section-lead {
+    font-size: 16px;
+    color: var(--slate-500);
+    margin-bottom: 32px;
+    max-width: 680px;
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--slate-800);
+    margin-bottom: 12px;
+    margin-top: 28px;
+  }
+
+  h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--slate-700);
+    margin-bottom: 8px;
+    margin-top: 20px;
+  }
+
+  p { margin-bottom: 14px; }
+
+  /* === CARDS === */
+  .card {
+    background: #fff;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease;
+  }
+
+  .card:hover {
+    box-shadow: var(--shadow-md);
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .feature-card {
+    background: #fff;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .feature-card .icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--orange-50);
+    color: var(--orange-500);
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+
+  .feature-card h4 {
+    margin-top: 0;
+    font-size: 15px;
+  }
+
+  .feature-card p {
+    font-size: 14px;
+    color: var(--slate-500);
+    margin-bottom: 0;
+  }
+
+  /* === CALLOUT === */
+  .callout {
+    background: var(--orange-50);
+    border-left: 3px solid var(--orange-400);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 16px 20px;
+    margin: 20px 0;
+    font-size: 14px;
+    color: var(--slate-700);
+  }
+
+  .callout.warning {
+    background: #fffbeb;
+    border-left-color: #f59e0b;
+  }
+
+  .callout.info {
+    background: #eff6ff;
+    border-left-color: #3b82f6;
+  }
+
+  .callout strong {
+    color: var(--slate-800);
+  }
+
+  .callout p:last-child { margin-bottom: 0; }
+
+  /* === LISTS === */
+  ul, ol {
+    margin-bottom: 14px;
+    padding-left: 24px;
+  }
+
+  li {
+    margin-bottom: 6px;
+  }
+
+  li::marker {
+    color: var(--orange-400);
+  }
+
+  /* === TABLES === */
+  .table-wrapper {
+    overflow-x: auto;
+    margin: 16px 0;
+    border-radius: var(--radius);
+    border: 1px solid var(--slate-200);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  thead {
+    background: var(--slate-50);
+  }
+
+  th {
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 600;
+    color: var(--slate-600);
+    border-bottom: 1px solid var(--slate-200);
+    white-space: nowrap;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--slate-100);
+    color: var(--slate-700);
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tbody tr:hover { background: var(--slate-50); }
+
+  /* === CODE === */
+  code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: var(--slate-100);
+    border: 1px solid var(--slate-200);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--orange-700);
+  }
+
+  pre {
+    background: var(--slate-900);
+    color: #e2e8f0;
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-size: 13px;
+    line-height: 1.65;
+    box-shadow: var(--shadow-md);
+  }
+
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+  }
+
+  .code-comment { color: #64748b; }
+  .code-string { color: #86efac; }
+  .code-keyword { color: #93c5fd; }
+  .code-variable { color: #fbbf24; }
+
+  /* === TABS === */
+  .tabs-section {
+    padding: 56px 0;
+    background: linear-gradient(180deg, var(--slate-50) 0%, #fff 100%);
+  }
+
+  .tabs-header {
+    display: flex;
+    gap: 4px;
+    background: var(--slate-100);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 28px;
+    overflow-x: auto;
+  }
+
+  .tab-btn {
+    flex: 1;
+    min-width: 200px;
+    padding: 14px 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--slate-500);
+    border-radius: var(--radius-sm);
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .tab-btn:hover {
+    color: var(--slate-700);
+    background: rgba(255,255,255,0.5);
+  }
+
+  .tab-btn.active {
+    background: #fff;
+    color: var(--orange-600);
+    box-shadow: var(--shadow-md);
+    font-weight: 600;
+  }
+
+  .tab-label {
+    font-size: 12px;
+    font-weight: 400;
+    opacity: 0.7;
+  }
+
+  .tab-btn.active .tab-label {
+    color: var(--orange-400);
+    opacity: 1;
+  }
+
+  .tab-btn svg {
+    flex-shrink: 0;
+    margin-bottom: 2px;
+  }
+
+  .tab-content {
+    display: none;
+    animation: fadeIn 0.35s ease;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .task-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--slate-200);
+  }
+
+  .task-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius);
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .task-icon.engineering {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #2563eb;
+  }
+
+  .task-icon.product {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #16a34a;
+  }
+
+  .task-icon.ai {
+    background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+    color: #db2777;
+  }
+
+  .task-meta {
+    flex: 1;
+  }
+
+  .task-meta h3 {
+    margin-top: 0;
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+
+  .task-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .tag.focus {
+    background: var(--orange-50);
+    color: var(--orange-600);
+    border: 1px solid var(--orange-200);
+  }
+
+  .tag.time {
+    background: var(--slate-100);
+    color: var(--slate-600);
+    border: 1px solid var(--slate-200);
+  }
+
+  .task-body h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--slate-800);
+    margin-top: 24px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--slate-100);
+  }
+
+  .task-body h4:first-child {
+    margin-top: 0;
+  }
+
+  .issue-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--orange-600);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+  }
+
+  .issue-link:hover {
+    text-decoration: underline;
+  }
+
+  /* === FILE REFERENCE TABLE === */
+  .file-ref {
+    margin: 16px 0;
+  }
+
+  .file-ref table td:first-child {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--orange-700);
+    white-space: nowrap;
+  }
+
+  /* === TIMELINE === */
+  .timeline {
+    position: relative;
+    padding-left: 28px;
+    margin: 20px 0;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: var(--orange-200);
+    border-radius: 2px;
+  }
+
+  .timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -24px;
+    top: 7px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--orange-400);
+    border: 3px solid var(--orange-100);
+  }
+
+  .timeline-item h4 {
+    margin-top: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+    font-size: 15px;
+  }
+
+  .timeline-item p {
+    font-size: 14px;
+    color: var(--slate-600);
+    margin-bottom: 0;
+  }
+
+  /* === EXPECT TABLE === */
+  .expect-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 16px;
+  }
+
+  .expect-card {
+    background: #fff;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .expect-card h3 {
+    margin-top: 0;
+    font-size: 16px;
+    margin-bottom: 16px;
+    color: var(--slate-800);
+  }
+
+  .expect-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+
+  .expect-item .icon {
+    flex-shrink: 0;
+    font-size: 16px;
+    margin-top: 1px;
+  }
+
+  .expect-item .text {
+    flex: 1;
+  }
+
+  .expect-item .label {
+    font-weight: 600;
+    color: var(--slate-800);
+  }
+
+  .expect-item .desc {
+    color: var(--slate-500);
+    font-size: 13px;
+  }
+
+  /* === STEPS === */
+  .step {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--orange-500);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .step-content {
+    flex: 1;
+  }
+
+  .step-content h4 {
+    margin-top: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  /* === FOOTER === */
+  footer {
+    padding: 40px 0;
+    background: var(--slate-900);
+    color: var(--slate-400);
+    text-align: center;
+    font-size: 14px;
+  }
+
+  footer a {
+    color: var(--orange-400);
+    text-decoration: none;
+  }
+
+  footer a:hover {
+    text-decoration: underline;
+  }
+
+  /* === LINKS === */
+  a {
+    color: var(--orange-600);
+    text-decoration: none;
+  }
+
+  a:hover { text-decoration: underline; }
+
+  /* === INTERVIEW QUESTIONS === */
+  .question-list {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+  }
+
+  .question-list li {
+    position: relative;
+    padding: 10px 0 10px 20px;
+    border-bottom: 1px solid var(--slate-100);
+    font-size: 14px;
+    color: var(--slate-600);
+    font-style: italic;
+  }
+
+  .question-list li::before {
+    content: '"';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    font-size: 20px;
+    color: var(--orange-300);
+    font-style: normal;
+    font-family: var(--font-display);
+    line-height: 1;
+  }
+
+  .question-list li:last-child { border-bottom: none; }
+
+  /* === PR TEMPLATE === */
+  .pr-template {
+    background: #fff;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 16px 0;
+  }
+
+  .pr-template-header {
+    padding: 12px 16px;
+    background: var(--slate-50);
+    border-bottom: 1px solid var(--slate-200);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--slate-500);
+    font-family: var(--font-mono);
+  }
+
+  .pr-template pre {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+    color: var(--slate-700);
+    font-size: 13px;
+  }
+
+  .pr-template pre code { color: var(--slate-700); }
+
+  /* === POLICY BADGES === */
+  .policy-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  .policy-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 14px;
+    background: #fff;
+    border: 1px solid var(--slate-200);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+  }
+
+  .policy-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .policy-text strong {
+    display: block;
+    font-size: 13px;
+    color: var(--slate-800);
+  }
+
+  .policy-text span {
+    font-size: 12px;
+    color: var(--slate-500);
+  }
+
+  /* === RESPONSIVENESS === */
+  @media (max-width: 768px) {
+    .hero { padding: 48px 0 40px; }
+    .hero h1 { font-size: 28px; }
+    .hero-subtitle { font-size: 15px; }
+    .container { padding: 0 20px; }
+    section { padding: 40px 0; }
+    h2 { font-size: 22px; }
+    .tabs-header { flex-direction: column; }
+    .tab-btn { min-width: auto; }
+    .expect-grid { grid-template-columns: 1fr; }
+    .policy-grid { grid-template-columns: 1fr; }
+    .card-grid { grid-template-columns: 1fr; }
+  }
+
+  /* === ENTRANCE ANIMATIONS === */
+  .animate-in {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  .animate-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* === SCROLLBAR === */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--slate-300); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--slate-400); }
+
+  /* === SUCCESS CRITERIA === */
+  .criteria-list {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+  }
+
+  .criteria-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--slate-100);
+    font-size: 15px;
+  }
+
+  .criteria-list li:last-child { border-bottom: none; }
+
+  .criteria-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--orange-100);
+    color: var(--orange-600);
+    font-weight: 700;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ========== HERO ========== -->
+<header class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      HireYI Technical Assessment
+    </div>
+    <h1>技术评估任务<br><em>候选人指南</em></h1>
+    <p class="hero-subtitle">
+      AI 编程工具正在深刻改变软件开发的方式。这次评估的核心是观察你如何在 AI 工具的辅助下，高效解决真实工程问题。
+    </p>
+    <div class="hero-links">
+      <a href="https://github.com/eastdogzhou/hireyi" target="_blank" class="primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub 仓库
+      </a>
+      <a href="https://hireyi.vercel.app" target="_blank" class="secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        在线体验
+      </a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- ========== SECTION 1: ABOUT ========== -->
+<section>
+  <div class="container animate-in">
+    <div class="section-heading">
+      <span class="section-number">01</span>
+      <h2>关于这次面试任务</h2>
+    </div>
+    <p class="section-lead">我们相信，能否有效地与 AI 协作已成为工程师的核心竞争力之一。</p>
+
+    <p>这次技术评估的核心不是考察你的代码量或算法能力，而是观察你如何：</p>
+
+    <div class="card-grid">
+      <div class="feature-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        </div>
+        <h4>快速理解代码库</h4>
+        <p>在陌生的真实项目中快速找到关键代码、理解架构模式</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </div>
+        <h4>AI 辅助开发</h4>
+        <p>借助 AI 工具定位问题、设计方案、高效完成实现</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+        </div>
+        <h4>工程决策能力</h4>
+        <p>做出合理的工程决策并清晰地解释取舍和理由</p>
+      </div>
+    </div>
+
+    <h3>工具使用政策</h3>
+
+    <div class="policy-grid">
+      <div class="policy-item">
+        <span class="policy-icon">&#10003;</span>
+        <div class="policy-text">
+          <strong>AI 工具不限</strong>
+          <span>Cursor、Copilot、Claude Code、ChatGPT 等</span>
+        </div>
+      </div>
+      <div class="policy-item">
+        <span class="policy-icon">&#10003;</span>
+        <div class="policy-text">
+          <strong>资源不限</strong>
+          <span>文档、Stack Overflow、技术博客、开源项目</span>
+        </div>
+      </div>
+      <div class="policy-item">
+        <span class="policy-icon">&#10003;</span>
+        <div class="policy-text">
+          <strong>库不限</strong>
+          <span>任何开源库，只要选择合理、能解释判断</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout warning">
+      <strong>&#9888;&#65039; 重要提示</strong>
+      <p>后续面试将<strong>完全基于你的提交</strong>进行深度讨论。我们会请你讲解设计决策、现场修改代码、讨论扩展场景。请确保你理解并能解释提交的每一处改动。</p>
+      <p>我们也会聊到你在这个过程中<strong>如何使用 AI 工具</strong>——哪些地方 AI 帮了忙？有没有 AI 给出错误方案的情况？你是怎么判断和修正的？</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== SECTION 2: PROJECT ========== -->
+<section>
+  <div class="container animate-in">
+    <div class="section-heading">
+      <span class="section-number">02</span>
+      <h2>关于 HireYI 项目</h2>
+    </div>
+    <p class="section-lead">AI 驱动的简历管理与人才筛选平台，帮助招聘团队高效管理候选人并智能匹配岗位。</p>
+
+    <h3>核心功能</h3>
+    <ul>
+      <li>自动化简历解析（支持 PDF、DOCX、图片等多格式，AI 提取结构化数据）</li>
+      <li>AI 驱动的岗位-候选人匹配与评分（两阶段：关键词预筛选 + LLM 精排）</li>
+      <li>集中化的面试反馈与候选人状态管理</li>
+      <li>多租户组织管理与角色权限控制</li>
+    </ul>
+
+    <h3>技术栈</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>层面</th><th>技术</th></tr></thead>
+        <tbody>
+          <tr><td>后端</td><td>Python 3.11+ / FastAPI / Supabase (PostgreSQL)</td></tr>
+          <tr><td>前端</td><td>TypeScript / React 19 / TailwindCSS / React Query</td></tr>
+          <tr><td>AI / LLM</td><td>LiteLLM（支持 OpenAI、DeepSeek、Ollama 等 100+ 提供商）</td></tr>
+          <tr><td>文件存储</td><td>Aliyun OSS</td></tr>
+          <tr><td>包管理</td><td>uv (Python) / npm (前端)</td></tr>
+          <tr><td>代码质量</td><td>ruff + basedpyright + pre-commit</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>项目状态</h3>
+    <ul>
+      <li>后端：35 个 API 端点，135+ 测试用例</li>
+      <li>前端：完整的 MVP 功能，16+ UI 基础组件</li>
+    </ul>
+
+    <div class="callout info">
+      <strong>&#128161; 建议</strong>：在开始开发前，先访问 <a href="https://hireyi.vercel.app" target="_blank">线上版本</a> 体验一下产品的完整功能，有助于快速建立对项目的整体认知。
+    </div>
+  </div>
+</section>
+
+<!-- ========== SECTION 3: TASKS (TABS) ========== -->
+<section class="tabs-section" id="tasks">
+  <div class="container animate-in">
+    <div class="section-heading">
+      <span class="section-number">03</span>
+      <h2>任务说明</h2>
+    </div>
+    <p class="section-lead">根据你应聘的方向，我们为你准备了对应的任务（如有疑问请提前沟通）：</p>
+
+    <div class="tabs-header" role="tablist">
+      <button class="tab-btn active" role="tab" aria-selected="true" data-tab="task-a" onclick="switchTab('task-a', this)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M11 9h4a2 2 0 0 0 2-2V3"/><circle cx="9" cy="9" r="2"/><path d="M7 21v-4a2 2 0 0 1 2-2h4"/><circle cx="15" cy="15" r="2"/></svg>
+        任务 A：职位管理页面完善
+        <span class="tab-label">前端工程能力</span>
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="task-b" onclick="switchTab('task-b', this)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+        任务 B：首页仪表板设计
+        <span class="tab-label">产品感觉</span>
+      </button>
+      <button class="tab-btn" role="tab" aria-selected="false" data-tab="task-c" onclick="switchTab('task-c', this)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M9 13a4.5 4.5 0 0 0 3-4"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M12 13h4"/><path d="M12 18h6a2 2 0 0 1 2 2v1"/><path d="M12 8h8"/><path d="M16 8V5a2 2 0 0 1 2-2"/><circle cx="16" cy="13" r=".5"/><circle cx="18" cy="3" r=".5"/><circle cx="20" cy="21" r=".5"/><circle cx="20" cy="8" r=".5"/></svg>
+        任务 C：AI 候选人评估 Agent
+        <span class="tab-label">AI 应用开发</span>
+      </button>
+    </div>
+
+    <!-- ===== TASK A ===== -->
+    <div class="tab-content active" id="task-a" role="tabpanel">
+      <div class="card" style="border-top: 3px solid #2563eb;">
+        <div class="task-header">
+          <div class="task-icon engineering"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M11 9h4a2 2 0 0 0 2-2V3"/><circle cx="9" cy="9" r="2"/><path d="M7 21v-4a2 2 0 0 1 2-2h4"/><circle cx="15" cy="15" r="2"/></svg></div>
+          <div class="task-meta">
+            <h3>任务 A：职位管理页面完善</h3>
+            <div class="task-tags">
+              <span class="tag focus">前端工程能力</span>
+              <span class="tag focus">代码导航 &middot; 模式复用 &middot; 状态管理</span>
+              <span class="tag time">&#128337; 4-6 小时</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="task-body">
+          <h4>背景</h4>
+          <p>职位管理模块的两个核心页面存在多处 UI 未正确接入的问题。</p>
+
+          <h4>职位列表页 (<code>/positions</code>)</h4>
+          <ol>
+            <li>"智能筛选"按钮点击后无反应（当前只有 <code>console.log</code>）—— 项目中已有 <code>SmartScreeningModal</code> 组件在其他页面正常使用</li>
+            <li>候选人数量列始终显示 <code>0</code>，未展示实际数据</li>
+            <li>状态列始终显示"招聘中"，未使用后端返回的实际 <code>status</code> 字段</li>
+            <li>列表缺少分页功能 —— 项目中已有 <code>Pagination</code> 组件在候选人列表页使用</li>
+          </ol>
+
+          <h4>职位详情页 (<code>/positions/:id</code>)</h4>
+          <ol start="5">
+            <li>候选人列表中"安排面试"和"更新状态"按钮无功能（当前只有 <code>console.log</code>）</li>
+            <li>候选人列表缺少分页</li>
+          </ol>
+
+          <div class="callout">
+            <strong>提示</strong>
+            <p>重点考察你<strong>发现并复用已有组件</strong>的能力。对于后端未直接返回的数据（如 candidates_count），需要你做出设计决策并在 PR 中说明。</p>
+          </div>
+
+          <p>
+            关联 Issue：
+            <a href="https://github.com/eastdogzhou/hireyi/issues/25" target="_blank" class="issue-link">#25</a>、
+            <a href="https://github.com/eastdogzhou/hireyi/issues/26" target="_blank" class="issue-link">#26</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TASK B ===== -->
+    <div class="tab-content" id="task-b" role="tabpanel">
+      <div class="card" style="border-top: 3px solid #16a34a;">
+        <div class="task-header">
+          <div class="task-icon product"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg></div>
+          <div class="task-meta">
+            <h3>任务 B：首页仪表板设计与实现</h3>
+            <div class="task-tags">
+              <span class="tag focus">产品感觉</span>
+              <span class="tag focus">需求提炼 &middot; 数据呈现 &middot; UX 设计</span>
+              <span class="tag time">&#128337; 6-8 小时</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="task-body">
+          <h4>背景</h4>
+          <p>应用目前没有首页，用户登录后直接跳转到候选人列表。作为一个招聘管理平台，HR 用户需要一个 Dashboard 快速了解当前招聘状况。</p>
+
+          <h4>需要实现的功能</h4>
+          <ol>
+            <li>设计并实现一个 Home Page，作为用户登录后的首个页面</li>
+            <li>展示对 HR 用户有价值的招聘数据统计（展示哪些指标由你决定）</li>
+            <li>提供快速导航到常用操作的入口</li>
+            <li>使用已有的 API hooks 获取数据（参考 <code>frontend/src/hooks/api/</code>）</li>
+            <li>与现有的设计系统保持一致（Orange 主题，已有 UI 组件库）</li>
+          </ol>
+
+          <div class="callout">
+            <strong>提示</strong>
+            <p>没有设计稿，展示什么数据和如何布局完全由你决定。我们关注的是你的<strong>产品判断</strong>和<strong>设计决策</strong>，而非动效华丽度。请在 PR 描述中说明你的设计思路和取舍。</p>
+          </div>
+
+          <p>
+            关联 Issue：
+            <a href="https://github.com/eastdogzhou/hireyi/issues/15" target="_blank" class="issue-link">#15</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TASK C ===== -->
+    <div class="tab-content" id="task-c" role="tabpanel">
+      <div class="card" style="border-top: 3px solid #db2777;">
+        <div class="task-header">
+          <div class="task-icon ai"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M9 13a4.5 4.5 0 0 0 3-4"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M12 13h4"/><path d="M12 18h6a2 2 0 0 1 2 2v1"/><path d="M12 8h8"/><path d="M16 8V5a2 2 0 0 1 2-2"/><circle cx="16" cy="13" r=".5"/><circle cx="18" cy="3" r=".5"/><circle cx="20" cy="21" r=".5"/><circle cx="20" cy="8" r=".5"/></svg></div>
+          <div class="task-meta">
+            <h3>任务 C：AI 候选人评估 Agent</h3>
+            <div class="task-tags">
+              <span class="tag focus">AI 应用开发</span>
+              <span class="tag focus">Prompt 设计 &middot; LLM 集成 &middot; 全栈串联</span>
+              <span class="tag time">&#128337; 6-8 小时</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="task-body">
+          <h4>背景</h4>
+          <p>系统已经实现了多个 AI 功能（简历解析、全局评分、智能筛选）。面试反馈记录（interview_feedbacks）支持三种类型：</p>
+
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>类型</th><th>字段</th><th>状态</th></tr></thead>
+              <tbody>
+                <tr><td>人工面试评价</td><td><code>interview_rating</code> (1-4)</td><td style="color:#16a34a;font-weight:600;">&#10003; 已实现</td></tr>
+                <tr style="background: #fff7ed;"><td><strong>AI 评估</strong></td><td><code>ai_rating</code> (1-10)</td><td style="color:#ea580c;font-weight:600;">&#9888; 数据模型已就绪，无实际 AI 逻辑</td></tr>
+                <tr><td>状态变更记录</td><td><code>new_status</code></td><td style="color:#16a34a;font-weight:600;">&#10003; 已实现</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>需要实现的功能</h4>
+
+          <p><strong>1. Prompt 设计</strong>：设计一个评估 Prompt，综合考虑候选人简历信息和相关上下文，生成 AI 评分（1-10）和结构化评估意见</p>
+
+          <p><strong>2. 后端实现</strong>：</p>
+          <ul>
+            <li>实现 AI 评估逻辑，利用已有的 LLM 客户端（<code>backend/app/services/llm/client.py</code>）</li>
+            <li>新增 API 端点触发 AI 评估</li>
+            <li>评估结果通过已有的 <code>create_ai_evaluation()</code> 方法写入数据库</li>
+          </ul>
+
+          <p><strong>3. 前端实现</strong>：</p>
+          <ul>
+            <li>在合适的位置添加"AI 评估"触发按钮</li>
+            <li>展示评估结果（已有的 <code>ExecutionRecordsTimeline</code> 组件已支持显示 AI 评估记录）</li>
+            <li>处理加载状态和错误情况</li>
+          </ul>
+
+          <p><strong>4. 可测试性</strong>：确保核心逻辑有单元测试（可使用 mock LLM 响应）</p>
+
+          <h4>参考文件（建议按此顺序阅读）</h4>
+          <div class="table-wrapper file-ref">
+            <table>
+              <thead><tr><th>文件</th><th>作用</th></tr></thead>
+              <tbody>
+                <tr><td>backend/app/services/llm/prompts.py</td><td>已有的 Prompt 模板，了解设计模式</td></tr>
+                <tr><td>backend/app/services/llm/client.py</td><td>LLM 客户端，<code>text_complete()</code> 函数</td></tr>
+                <tr><td>backend/app/models/interview_feedback.py</td><td>数据模型，搜索 <code>AIEvaluationCreate</code></td></tr>
+                <tr><td>backend/app/services/interview_feedback_service.py</td><td>服务层，搜索 <code>create_ai_evaluation</code></td></tr>
+                <tr><td>backend/app/services/smart_screening_service.py</td><td>已有的 AI 调用范例</td></tr>
+                <tr><td>frontend/src/components/business/ExecutionRecordsTimeline.tsx</td><td>前端展示组件</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4>关于 LLM 访问</h4>
+          <ul>
+            <li>项目使用 LiteLLM，支持 100+ LLM 提供商</li>
+            <li><strong>推荐方案（免费本地运行）</strong>：安装 <a href="https://ollama.com" target="_blank">Ollama</a> &rarr; 拉取模型（如 <code>ollama pull qwen2.5</code>）&rarr; 在 <code>.env</code> 中配置 <code>DEFAULT_LLM_MODEL=ollama/qwen2.5</code></li>
+            <li>也可以使用你自己的 API Key（OpenAI、DeepSeek 等任意提供商）</li>
+            <li>也可以先用 mock 模式开发，确保架构正确后再接入真实 LLM</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ========== SECTION 4: SETUP ========== -->
+<section>
+  <div class="container animate-in">
+    <div class="section-heading">
+      <span class="section-number">04</span>
+      <h2>环境搭建</h2>
+    </div>
+    <p class="section-lead">按以下步骤准备开发环境。</p>
+
+    <h3>前置要求</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>工具</th><th>版本</th><th>安装说明</th></tr></thead>
+        <tbody>
+          <tr><td>Git</td><td>any</td><td>-</td></tr>
+          <tr><td>Python</td><td>3.11+</td><td><a href="https://python.org" target="_blank">python.org</a></td></tr>
+          <tr><td>Node.js</td><td>18+</td><td><a href="https://nodejs.org" target="_blank">nodejs.org</a></td></tr>
+          <tr><td>uv</td><td>latest</td><td><code>curl -LsSf https://astral.sh/uv/install.sh | sh</code></td></tr>
+          <tr><td>Ollama</td><td>latest（仅任务 C）</td><td><a href="https://ollama.com" target="_blank">ollama.com</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="step">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <h4>Fork 并克隆项目</h4>
+<pre><code><span class="code-comment"># 1. 在 GitHub 上 Fork 项目到你的账号</span>
+<span class="code-comment">#    项目地址：https://github.com/eastdogzhou/hireyi</span>
+<span class="code-comment"># 2. 克隆你的 Fork</span>
+<span class="code-keyword">git</span> clone https://github.com/&lt;your-username&gt;/hireyi.git
+<span class="code-keyword">cd</span> hireyi</code></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <h4>配置后端</h4>
+<pre><code><span class="code-keyword">cd</span> backend
+
+<span class="code-comment"># 安装依赖</span>
+uv sync
+
+<span class="code-comment"># 复制环境变量模板</span>
+<span class="code-keyword">cp</span> .env.example .env</code></pre>
+        <p>打开 <code>backend/.env</code>，配置以下关键变量：</p>
+<pre><code><span class="code-comment"># === Supabase 配置 ===</span>
+<span class="code-comment"># 请联系我们获取测试实例凭证，或创建自己的免费 Supabase 项目</span>
+<span class="code-variable">SUPABASE_URL</span>=<span class="code-string">https://xxx.supabase.co</span>
+<span class="code-variable">SUPABASE_ANON_KEY</span>=<span class="code-string">your-anon-key</span>
+<span class="code-variable">SUPABASE_SERVICE_ROLE_KEY</span>=<span class="code-string">your-service-role-key</span>
+
+<span class="code-comment"># === LLM 配置（仅任务 C 需要）===</span>
+<span class="code-variable">DEFAULT_LLM_MODEL</span>=<span class="code-string">ollama/qwen2.5</span></code></pre>
+        <div class="callout info">
+          <strong>&#128161; 关于 Supabase 凭证</strong>：请联系我们获取测试实例的凭证。如果你希望完全自主搭建，也可以在 <a href="https://supabase.com" target="_blank">supabase.com</a> 创建免费项目，并使用 <code>database/schema.sql</code> 初始化表结构。
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <h4>配置前端</h4>
+<pre><code><span class="code-keyword">cd</span> ../frontend
+
+<span class="code-comment"># 安装依赖</span>
+npm install
+
+<span class="code-comment"># 复制环境变量模板</span>
+<span class="code-keyword">cp</span> .env.example .env</code></pre>
+        <p>编辑 <code>frontend/.env</code>：</p>
+<pre><code><span class="code-variable">VITE_API_BASE_URL</span>=<span class="code-string">http://localhost:8000</span>
+<span class="code-variable">VITE_SUPABASE_URL</span>=<span class="code-string">https://xxx.supabase.co</span>
+<span class="code-variable">VITE_SUPABASE_ANON_KEY</span>=<span class="code-string">your-anon-key</span></code></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">4</div>
+      <div class="step-content">
+        <h4>启动项目</h4>
+<pre><code><span class="code-comment"># 终端 1：启动后端</span>
+<span class="code-keyword">cd</span> backend
+uv run uvicorn app.main:app --reload --port 8000
+<span class="code-comment"># 验证：访问 http://localhost:8000/docs 可看到 Swagger API 文档</span>
+
+<span class="code-comment"># 终端 2：启动前端</span>
+<span class="code-keyword">cd</span> frontend
+npm run dev
+<span class="code-comment"># 验证：访问 http://localhost:5173 可看到登录页面</span></code></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">5</div>
+      <div class="step-content">
+        <h4>验证项目运行正常</h4>
+        <ol>
+          <li>访问 <code>http://localhost:5173</code>，看到登录页面</li>
+          <li>注册一个新账号 &rarr; 创建或加入组织</li>
+          <li>进入应用后，能看到候选人列表和职位列表页面</li>
+          <li>（可选）上传一份测试简历，验证 AI 解析功能</li>
+        </ol>
+        <div class="callout">
+          <strong>遇到问题？</strong> 请参考 <code>docs/deployment.md</code> 的常见问题章节，或直接联系我们。
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ========== SECTION 5: DEVELOPMENT ========== -->
+<section>
+  <div class="container animate-in">
+    <div class="section-heading">
+      <span class="section-number">05</span>
+      <h2>开发与提交</h2>
+    </div>
+    <p class="section-lead">遵循项目的开发规范完成开发并提交 PR。</p>
+
+    <h3>开发流程</h3>
+<pre><code><span class="code-comment"># 1. 创建功能分支</span>
+<span class="code-keyword">git</span> checkout -b feat/your-task-description
+
+<span class="code-comment"># 2. 开发...（推荐使用 AI 工具辅助）</span>
+
+<span class="code-comment"># 3. 确保代码质量检查通过</span>
+<span class="code-keyword">cd</span> backend
+uv run ruff check .       <span class="code-comment"># 代码检查</span>
+uv run ruff format .      <span class="code-comment"># 代码格式化</span>
+uv run pytest             <span class="code-comment"># 运行测试</span>
+
+<span class="code-keyword">cd</span> ../frontend
+npm run lint              <span class="code-comment"># 前端代码检查</span>
+npm run build             <span class="code-comment"># 确保构建通过</span>
+
+<span class="code-comment"># 4. 提交代码（遵循 Conventional Commits 格式）</span>
+<span class="code-keyword">git</span> add .
+<span class="code-keyword">git</span> commit -m <span class="code-string">"feat(scope): description of changes"</span>
+
+<span class="code-comment"># 5. 推送到你的 Fork</span>
+<span class="code-keyword">git</span> push origin feat/your-task-description</code></pre>
+
+    <h3>PR 描述模板</h3>
+    <div class="pr-template">
+      <div class="pr-template-header">Pull Request Description Template</div>
+<pre><code>## 改动说明
+[你做了什么，解决了什么问题]
+
+## 设计决策
+[关键的技术选择和原因，例如：]
+- 为什么选择方案 X 而不是 Y？
+- 哪些地方做了取舍？理由是什么？
+
+## AI 工具使用
+[简要说明你在开发过程中如何使用 AI 工具]
+- 使用了哪些 AI 工具？
+- AI 在哪些环节帮助最大？
+- 有没有 AI 给出不恰当建议的情况？你是怎么处理的？
+
+## 测试验证
+[如何验证你的改动是正确的]
+
+## 已知限制
+[如果有未完成或可以改进的地方，请说明]</code></pre>
+    </div>
+
+    <h3>代码规范</h3>
+    <p>项目已有完整的代码规范，AI 工具可以帮助你快速适应：</p>
+    <ul>
+      <li><strong>Python</strong>：类型注解（必须）、Sphinx 风格 docstring、ruff 格式化</li>
+      <li><strong>TypeScript</strong>：严格类型、named exports</li>
+      <li><strong>Git</strong>：Conventional Commits（<code>feat(scope): subject</code>）</li>
+      <li><strong>详细规范</strong>：参考 <code>CLAUDE.md</code> 和 <code>AGENTS.md</code></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ========== SECTION 6: EXPECTATIONS ========== -->
+<section>
+  <div class="container animate-in">
+    <div class="section-heading">
+      <span class="section-number">06</span>
+      <h2>我们的期望</h2>
+    </div>
+    <p class="section-lead">质量大于数量，简单可行大于复杂完美。</p>
+
+    <div class="expect-grid">
+      <div class="expect-card">
+        <h3>&#10003; 我们看重的</h3>
+        <div class="expect-item">
+          <span class="icon">&#128269;</span>
+          <div class="text">
+            <div class="label">代码库理解</div>
+            <div class="desc">能否快速理解陌生代码库的架构和模式，找到可复用的组件和方法</div>
+          </div>
+        </div>
+        <div class="expect-item">
+          <span class="icon">&#9878;&#65039;</span>
+          <div class="text">
+            <div class="label">工程决策</div>
+            <div class="desc">面对多种实现方案时，能否做出合理选择并清晰解释理由</div>
+          </div>
+        </div>
+        <div class="expect-item">
+          <span class="icon">&#129302;</span>
+          <div class="text">
+            <div class="label">AI 协作效率</div>
+            <div class="desc">能否有效利用 AI 工具加速开发，同时保持对代码的理解和把控</div>
+          </div>
+        </div>
+        <div class="expect-item">
+          <span class="icon">&#9889;</span>
+          <div class="text">
+            <div class="label">代码质量</div>
+            <div class="desc">提交的代码是否规范、完整、可维护，与项目现有风格一致</div>
+          </div>
+        </div>
+        <div class="expect-item">
+          <span class="icon">&#9989;</span>
+          <div class="text">
+            <div class="label">完整性</div>
+            <div class="desc">功能是否完整可用，PR 是否包含清晰的说明</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="expect-card">
+        <h3>&#10005; 我们不看重的</h3>
+        <div class="expect-item">
+          <span class="icon" style="opacity:0.4;">&#128196;</span>
+          <div class="text">
+            <div class="label" style="color:var(--slate-500);">代码的绝对数量</div>
+            <div class="desc">质量 &gt; 数量</div>
+          </div>
+        </div>
+        <div class="expect-item">
+          <span class="icon" style="opacity:0.4;">&#127775;</span>
+          <div class="text">
+            <div class="label" style="color:var(--slate-500);">炫技或过度工程化</div>
+            <div class="desc">简单可行 &gt; 复杂完美</div>
+          </div>
+        </div>
+        <div class="expect-item">
+          <span class="icon" style="opacity:0.4;">&#129302;</span>
+          <div class="text">
+            <div class="label" style="color:var(--slate-500);">是否用了 AI</div>
+            <div class="desc">我们假设你会用，也鼓励你用</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>成功标准</h3>
+    <ul class="criteria-list">
+      <li><span class="criteria-num">1</span> <strong>对应的问题能被解决</strong> — 功能正常工作</li>
+      <li><span class="criteria-num">2</span> <strong>代码规范、完整</strong> — 通过 lint / type check，与项目风格一致</li>
+      <li><span class="criteria-num">3</span> <strong>在 GitHub 上提交一个 PR</strong> — 包含清晰的改动说明和设计决策</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ========== SECTION 7: INTERVIEW ========== -->
+<section>
+  <div class="container animate-in">
+    <div class="section-heading">
+      <span class="section-number">07</span>
+      <h2>后续面试</h2>
+    </div>
+    <p class="section-lead">提交 PR 后，我们会安排一次 60 分钟的深度技术面试。</p>
+
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>阶段</th><th>时长</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Walk Through</strong></td><td>15 min</td><td>你讲解实现思路和关键决策</td></tr>
+          <tr><td><strong>深度追问</strong></td><td>30 min</td><td>基于代码的具体问题、现场小幅修改、扩展场景讨论</td></tr>
+          <tr><td><strong>自由交流</strong></td><td>15 min</td><td>你的问题、双向了解</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>典型的追问方向</h3>
+    <ul class="question-list">
+      <li>你是怎么发现这个组件已经在其他页面实现了的？</li>
+      <li>AI 给你的第一个方案是什么？你为什么没有直接采用？</li>
+      <li>如果数据量增长 100 倍，这个设计会怎样？</li>
+      <li>如果让你重新做，你会改变什么？</li>
+      <li>开发过程中遇到最棘手的问题是什么？你是怎么解决的？</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ========== SECTION 8: SCHEDULE ========== -->
+<section>
+  <div class="container animate-in">
+    <div class="section-heading">
+      <span class="section-number">08</span>
+      <h2>时间安排</h2>
+    </div>
+    <p class="section-lead">建议实际投入 4-8 小时，不必追求完美。</p>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <h4>Day 0</h4>
+        <p>收到本文档，开始环境搭建和代码阅读</p>
+      </div>
+      <div class="timeline-item">
+        <h4>Day 0-2</h4>
+        <p>完成开发并提交 PR（建议实际投入 4-8 小时）</p>
+      </div>
+      <div class="timeline-item">
+        <h4>Day 3-5</h4>
+        <p>安排深度技术面试（60 分钟）</p>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <strong>&#128161; 建议</strong>：不必追求完美，先确保核心功能完整可用。如果时间允许，再打磨细节。
+    </div>
+  </div>
+</section>
+
+<!-- ========== SECTION 9: HELP ========== -->
+<section>
+  <div class="container animate-in">
+    <div class="section-heading">
+      <span class="section-number">09</span>
+      <h2>需要帮助？</h2>
+    </div>
+    <p class="section-lead">在任何阶段遇到问题，都可以联系我们。</p>
+
+    <div class="card-grid">
+      <div class="feature-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+        </div>
+        <h4>环境问题</h4>
+        <p>Supabase 凭证、项目运行报错 &rarr; 直接联系</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        </div>
+        <h4>任务理解</h4>
+        <p>需求不清晰、边界不确定 &rarr; 欢迎提问（建议不超过 3 个问题）</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        </div>
+        <h4>其他授权</h4>
+        <p>需要额外的服务访问权限 &rarr; 随时提出</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ========== FOOTER ========== -->
+<footer>
+  <div class="container">
+    <p style="margin-bottom: 8px;">
+      <strong style="color: var(--orange-400);">HireYI</strong> &mdash; AI-Powered Talent Screening Platform
+    </p>
+    <p>
+      <a href="https://github.com/eastdogzhou/hireyi" target="_blank">GitHub</a>
+      &nbsp;&middot;&nbsp;
+      <a href="https://hireyi.vercel.app" target="_blank">Live Demo</a>
+    </p>
+    <p style="margin-top: 12px; color: var(--slate-500); font-size: 12px;">祝你顺利！</p>
+  </div>
+</footer>
+
+<script>
+function switchTab(tabId, btn) {
+  // Deactivate all tabs
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+  });
+  document.querySelectorAll('.tab-content').forEach(c => {
+    c.classList.remove('active');
+  });
+
+  // Activate selected
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+  document.getElementById(tabId).classList.add('active');
+}
+
+// Scroll-triggered animations
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.animate-in').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
